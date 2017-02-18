@@ -22,7 +22,6 @@ should work whether the value argument to the constructor is an integer
 or a double-precision floating point number. Consider this C++ syntax
 pseudo-code:
 
-[source,c++]
 ----
 class Foo {
     public:
@@ -55,7 +54,7 @@ In fact, the result can be a little surprising at first, since function
 definitions are just executable statements, where the meaning is "create
 a function object and assign a reference to it to the name".  So two
 function defs of the same name is just like assigning two different
-values to a variable, the second one replaces the first:
+values to any other variable, the second assignment replaces the first:
 
 [source,python]
 ----
@@ -72,6 +71,8 @@ TypeError: a() takes exactly 1 argument (0 given)
 >>> a("hello")
 Hi, argument was hello
 ----
+That bit of interactive Python just showed functions, but it does
+look just the same inside a class definition.
 
 However, since Python is not a strongly typed language, this situation is
 not necessarily an issue. There's no problem with the following snippet:
