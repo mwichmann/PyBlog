@@ -1,6 +1,8 @@
 = Can Python Overload Methods?
 
-The title of the post is a question that seems to come up quite often.
+The title of the post is a question that seems to come up quite often
+in beginner forums, you can find a lot of hits in a web search,
+on Stackoverflow, etc.
 Not surprisingly, it usually comes from people who have worked
 in languages where method/function overloading is a big part of the
 language design.
@@ -14,13 +16,15 @@ of that function appropriate to the context of the call, allowing one
 function call to perform different tasks depending on context.
 ____
 
-== Different Typed Arguments
+Sometimes this question ends up dismissed as stupid, because you
+don't need that in Python. I'd like to take some time to talk about
+it, because the ideas behind it aren't worthless.
 
-The above defintion certainly applies in the context of a strongly
-typed language. As a simplistic example, you might have a class which
-should work whether the value argument to the constructor is an integer
-or a double-precision floating point number. Consider this C++ syntax
-pseudo-code:
+== Arguments of Differing Types
+
+As a simplistic example, consider a class which should work whether
+an argument to a class constructor is an integer or a double-precision
+floating point number. Consider this C++ syntax pseudo-code:
 
 ----
 class Foo {
@@ -49,15 +53,26 @@ So, two different constructor functions both named after the class
 the compiler will throw type errors on compilation, as it's an error to
 pass an argument of one type to a function expecting a different type.
 
-Python syntax does not allow multiple functions to take the same name.
-Sometimes the way this works can be a little surprising, actually:
+[sidebar]
+--
+There's sort of a semantic difference that Python doesn't exactly
+have a single "constructor". The `__init__` method is part of the
+construction process, but is actually not called until the object
+has already been constructed, by a different method `__new__`.
+However, we're interested in the initialization part of the
+creation of a class instance, not the creation part, so the
+`__init__` method is the relevant one here.
+--
+
+Python syntax does not allow multiple functions/methids to take the
+same name. Sometimes the way this works can be a little surprising:
 a Python function definition is an executable statement, in which
 two things happen: a function object is created from the body of
 the definition, and a reference to that object is then assigned to
 a variable with the name of the function. So two
 function definitions of the same name is just like assigning two different
 values to any other variable, the second assignment replaces the first.
-That's not what function overloaders expect...
+That's not what method overloaders expect...
 We can show this sequence with a bit of interactive Python use:
 
 [source,python]
@@ -93,7 +108,6 @@ assignment behavior is no different in that context.
 
 However, since Python is not a strongly typed language, this situation is
 not necessarily a problem. Consider the following snippet:
-
 [source,python]
 ----
 class Foo:
@@ -104,9 +118,19 @@ a = Foo(12)
 b = Foo(18.0)
 ----
 
+If you were doing that in a Python interpreter and tried
+a couple of quick experiments with the result:
+[source,python]
+----
+>>> print(a.x)
+12
+>>> print(b.x)
+18.0
+----
+
 Of course, you have to make sure the method you write in Python can
-actually handle arguments of different types.  Python _will_ let you check
-that, along these lines:
+actually handle arguments of different types.  Python _will_ let you
+check the type of something, along these lines:
 
 [source,python]
 ----
@@ -210,6 +234,12 @@ has to be written to handle this.
 
 === Differing Class Instantiations
 
+The other example case has some more nuances.  Now we're considering
+different ways to instantitate a class by design, not just adding
+an additional parameter.  One way to approach this case is to use
+Python's keyword argument passing scheme. Rather than trying to
+put this in words, look at this example:
+
 [source,python]
 ----
 class Employee:
@@ -222,10 +252,6 @@ class Employee:
             first = kwargs["first"]
             last = kwargs["last"]
             pay = kwargs["pay"]
-        else:
-            print("invalid initializer")
-            return
-
         self.first = first
         self.last = last
         self.pay = pay
@@ -240,8 +266,6 @@ emp_2 = Employee(emp_str="Test-Employee-60000")
 
 print(emp_1)
 print(emp_2)
-
-print(Employee.num_of_emps)
 ----
 
 [source,python]
@@ -260,16 +284,11 @@ class Employee:
         first, last, pay = emp_str.split('-')
         return cls(first, last, pay)
 
-    @classmethod
-    def from_tuple(cls, first, last, pay):
-        return cls(first, last, pay)
-
     def __str__(self):
         return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
 
 
 emp_1 = Employee("John", "Public", 50000)
-#emp_1 = Employee.from_tuple("John", "Public", 50000)
 emp_2 = Employee.from_string("Test-Employee-60000")
 
 print(emp_1)
