@@ -14,7 +14,7 @@ of that function appropriate to the context of the call, allowing one
 function call to perform different tasks depending on context.
 ____
 
-== Typing
+== Different Typed Arguments
 
 The above defintion certainly applies in the context of a strongly
 typed language. As a simplistic example, you might have a class which
@@ -45,37 +45,54 @@ Foo b = new(Foo(18.0));
 ----
 
 So, two different constructor functions both named after the class
-(as that is the C\++ syntax). C++ needs that information up front, or
+(as that is the C+\+ syntax). C++ needs that information up front, or
 the compiler will throw type errors on compilation, as it's an error to
 pass an argument of one type to a function expecting a different type.
 
 Python syntax does not allow multiple functions to take the same name.
-In fact, the result can be a little surprising at first, since function
-definitions are just executable statements, where the meaning is "create
-a function object and assign a reference to it to the name".  So two
-function defs of the same name is just like assigning two different
-values to any other variable, the second assignment replaces the first:
+Sometimes the way this works can be a little surprising, actually:
+a Python function definition is an executable statement, in which
+two things happen: a function object is created from the body of
+the definition, and a reference to that object is then assigned to
+a variable with the name of the function. So two
+function definitions of the same name is just like assigning two different
+values to any other variable, the second assignment replaces the first.
+That's not what function overloaders expect...
+We can show this sequence with a bit of interactive Python use:
 
 [source,python]
 ----
+>>> a=2
+>>> a=4
+>>> print(a)
+4
 >>> def a():
 ...     print "Hello"
 ...
+>>> print(a)
+<function a at 0x7f7fa29b4c80>
+>>> a()
+Hello
 >>> def a(x):
 ...     print "Hi, argument was", x
 ...
+>>> print(a)
+<function a at 0x7f7fa29b4cf8> // <1>
 >>> a()
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
 TypeError: a() takes exactly 1 argument (0 given)
->>> a("hello")
-Hi, argument was hello
+>>> a(8)
+Hi, argument was 8
+>>>
 ----
-That bit of interactive Python just showed functions, but it does
-look just the same inside a class definition.
+<1> different address from previous function object
+
+Note that sequence didn't show a class definition, but the
+assignment behavior is no different in that context.
 
 However, since Python is not a strongly typed language, this situation is
-not necessarily an issue. There's no problem with the following snippet:
+not necessarily a problem. Consider the following snippet:
 
 [source,python]
 ----
@@ -88,7 +105,7 @@ b = Foo(18.0)
 ----
 
 Of course, you have to make sure the method you write in Python can
-actually handle arguments of different types.  Python will let you check
+actually handle arguments of different types.  Python _will_ let you check
 that, along these lines:
 
 [source,python]
@@ -103,14 +120,23 @@ False
 True
 ----
 
-But there's a concept often cited in Python circles that it's "Easier
-to Ask Forgiveness than Permission" (or EAFP), which suggests that you
-just go ahead and try something, and clean up the mess afterwards if it
-didn't work.  That's antithetical to some software development theory
-which says to check everything first ("look before you leap"), but as long
-as you can properly deal with the fallout from problems there's not any
-real issue.  That idea isn't unique to Python though it may be expressed
-in different ways - exceptions are an example of this way of thinking.
+But there's a concept often cited in Python circles that it's "Easier to
+Ask Forgiveness than Permission" (or EAFP), which suggests that you just
+go ahead and try something, and clean up the mess afterwards if it didn't
+work.  That's antithetical to some software development theory which says
+to check everything first ("Look Before You Leap"), but as long as you
+can properly deal with the fallout from failures there's not any real
+problem.  That idea isn't unique to Python, though it may be expressed
+in different ways when talking about different languages. Exceptions are
+an example of this way of thinking, and they exist in many languages.
+This isn't just a case of dogma, consider that many LBYL sequences
+have proven to have timing holes that lead to security issues - for
+example if you write code to validate a filename path, then proceed to
+open it after the check completes, the time difference between the two,
+however minimal, is a window where someone external to the program can
+link the pathname elsewhere and cause the program to open something it
+didn't intend to. This class of security issues is called TOCTOU (Time
+Of Check, Time Of Use).
 
 And it turns out Python can often handle differing types without
 any problem - it's not an error, for example, to perform arithmetic
@@ -128,35 +154,38 @@ ____
 In this simple case, if your objective is to perform arithmetic on your
 arguments, integers and floats both have methods like add, subtract,
 multiply, etc. So there is not a compelling reason to treat them in
-different ways.
+different ways unless you actually run into a case where behavior
+is incompatible with your expectations.
 
 == Differing Numbers of Arguments
 
 Another case for overloading in static languages is if the method
 may need to take different numbers of arguments.  This can come up
-in a different ways, for example:
+in a few different ways, to list a couple of examples:
 
-* You want to offer different ways to call, as in a hypotetical
-employee database where a new employee can be added by a
-("Firstname", "Lastname", Salary) triple, or by a string encoding all
+* You want to offer different ways to instantiate a class, as in a
+hypotetical employee database where a new employee can be added by a
+(Firstname, Lastname, Salary) triple, or by a string encoding all
 three as "Firstname-Lastname-Salary".
 * Evolution: say you've implemented a class, and then later find out
-you need to make some extensions to your API which involves passing
-an additional parameter.  If you just change the constructor, then all
-the code instantiating that class must now change. But by overload
-through adding a new constructor plus leaving the old one and adjusting
-its behavior so it has a sensible default if the added argument from
-the new constructor is not passed old and new code can both be
-supported.
+you need to make some extensions to your API which involves passing an
+additional parameter.  If you just change the constructor, then all the
+code instantiating that class must now change. But by overload through
+adding a new constructor plus leaving the old one and adjusting its
+behavior so it has a sensible default if the added argument from the
+new constructor is not passed old and new code can both be supported.
 
-Of the two example cases, the second one is fairly easy to handle
-in Python. A combination of keyword arguments and/or default arguments
-normally does the trick. So we can go from:
+=== Added Arguments
+
+Of the two examples, the "we added an argument but don't want to break
+backwards compatibility" case seems fairly easy to handle in Python. A
+combination of keyword arguments and/or default arguments normally does
+the trick. So we can go from:
 
 [source,python]
 ----
 class Foo:
-    def __init__(self, x, y):
+    def __init__(self, x):
         self.x = x
 
 a = Foo(12)
@@ -166,12 +195,85 @@ to:
 [source,python]
 ----
 class Foo:
-    def __init__(self, x, y = None):
+    def __init__(self, x, y=None):
         self.x = x
-        if y:
-            self.y = y
+	self.y = y   // <1>
+
+a = Foo(12)   // <2>
+b = Foo(12, 18.0)   // <3>
+----
+<1> Even if `y` was not passed, this is okay since it has now been set
+to default to something (`None` in this case). Of course, your code
+has to be written to handle this.
+<2> Old way, one argument, still works
+<3> New way, two arguments
+
+=== Differing Class Instantiations
+
+[source,python]
+----
+class Employee:
+    num_of_emps = 0
+
+    def __init__(self, **kwargs):
+        if "emp_str" in kwargs:
+            first, last, pay = kwargs["emp_str"].split('-')
+        elif "first" in kwargs and "last" in kwargs and "pay" in kwargs:
+            first = kwargs["first"]
+            last = kwargs["last"]
+            pay = kwargs["pay"]
+        else:
+            print("invalid initializer")
+            return
+
+        self.first = first
+        self.last = last
+        self.pay = pay
+        Employee.num_of_emps += 1
+
+    def __str__(self):
+        return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
 
 
-a = Foo(12)          # old way still works
-b = Foo(12, 18.0)    # new way
+emp_1 = Employee(first="John", last="Public", pay=50000)
+emp_2 = Employee(emp_str="Test-Employee-60000")
+
+print(emp_1)
+print(emp_2)
+
+print(Employee.num_of_emps)
+----
+
+[source,python]
+----
+class Employee:
+    num_of_emps = 0
+
+    def __init__(self, first, last, pay):
+        self.first = first
+        self.last = last
+        self.pay = pay
+        Employee.num_of_emps += 1
+
+    @classmethod
+    def from_string(cls, emp_str):
+        first, last, pay = emp_str.split('-')
+        return cls(first, last, pay)
+
+    @classmethod
+    def from_tuple(cls, first, last, pay):
+        return cls(first, last, pay)
+
+    def __str__(self):
+        return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
+
+
+emp_1 = Employee("John", "Public", 50000)
+#emp_1 = Employee.from_tuple("John", "Public", 50000)
+emp_2 = Employee.from_string("Test-Employee-60000")
+
+print(emp_1)
+print(emp_2)
+
+print(Employee.num_of_emps)
 ----
