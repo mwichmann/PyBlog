@@ -64,7 +64,7 @@ creation of a class instance, not the creation part, so the
 `__init__` method is the relevant one here.
 --
 
-Python syntax does not allow multiple functions/methids to take the
+Python syntax does not allow multiple functions/methods to take the
 same name. Sometimes the way this works can be a little surprising:
 a Python function definition is an executable statement, in which
 two things happen: a function object is created from the body of
@@ -118,19 +118,11 @@ a = Foo(12)
 b = Foo(18.0)
 ----
 
-If you were doing that in a Python interpreter and tried
-a couple of quick experiments with the result:
-[source,python]
-----
->>> print(a.x)
-12
->>> print(b.x)
-18.0
-----
-
-Of course, you have to make sure the method you write in Python can
-actually handle arguments of different types.  Python _will_ let you
-check the type of something, along these lines:
+That is, we've instantiated Foo with different types of arguments, with
+no code needed to deal with the difference.  Of course, you have to
+make sure the method you write in Python can actually handle arguments
+of different types.  Python _will_ let you check the type of something,
+along these lines:
 
 [source,python]
 ----
@@ -182,7 +174,6 @@ different ways unless you actually run into a case where behavior
 is incompatible with your expectations.
 
 == Differing Numbers of Arguments
-
 Another case for overloading in static languages is if the method
 may need to take different numbers of arguments.  This can come up
 in a few different ways, to list a couple of examples:
@@ -191,7 +182,7 @@ in a few different ways, to list a couple of examples:
 hypotetical employee database where a new employee can be added by a
 (Firstname, Lastname, Salary) triple, or by a string encoding all
 three as "Firstname-Lastname-Salary".
-* Evolution: say you've implemented a class, and then later find out
+* API evolution: say you've implemented a class, and then later find out
 you need to make some extensions to your API which involves passing an
 additional parameter.  If you just change the constructor, then all the
 code instantiating that class must now change. But by overload through
@@ -200,7 +191,6 @@ behavior so it has a sensible default if the added argument from the
 new constructor is not passed old and new code can both be supported.
 
 === Added Arguments
-
 Of the two examples, the "we added an argument but don't want to break
 backwards compatibility" case seems fairly easy to handle in Python. A
 combination of keyword arguments and/or default arguments normally does
@@ -233,7 +223,6 @@ has to be written to handle this.
 <3> New way, two arguments
 
 === Differing Class Instantiations
-
 The other example case has some more nuances.  Now we're considering
 different ways to instantitate a class by design, not just adding
 an additional parameter.  One way to approach this case is to use
@@ -259,7 +248,6 @@ class Employee:
 
     def __str__(self):
         return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
-
 
 emp_1 = Employee(first="John", last="Public", pay=50000)
 emp_2 = Employee(emp_str="Test-Employee-60000")
