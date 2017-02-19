@@ -26,6 +26,7 @@ As a simplistic example, consider a class which should work whether
 an argument to a class constructor is an integer or a double-precision
 floating point number. Consider this C++ syntax pseudo-code:
 
+[source,c++]
 ----
 class Foo {
     public:
@@ -190,7 +191,7 @@ adding a new constructor plus leaving the old one and adjusting its
 behavior so it has a sensible default if the added argument from the
 new constructor is not passed old and new code can both be supported.
 
-=== Added Arguments
+=== API Evolves, Arguments Added
 Of the two examples, the "we added an argument but don't want to break
 backwards compatibility" case seems fairly easy to handle in Python. A
 combination of keyword arguments and/or default arguments normally does
@@ -223,11 +224,14 @@ has to be written to handle this.
 <3> New way, two arguments
 
 === Differing Class Instantiations
-The other example case has some more nuances.  Now we're intentionally
-considering different ways to instantitate a class.
+The other example case has some more nuances.  We're intending,
+up front, to allow the class to instantiated in quite different
+ways (although this change could of course also happen as an
+evolution)
+
 One way to approach this case is to use
-Python's keyword argument passing scheme. Rather than trying to
-put this in words, look at this example:
+Python's keyword argument passing. Rather than trying to
+put this in words, here's an example:
 
 [source,python]
 ----
@@ -242,7 +246,7 @@ class Employee:
             last = kwargs["last"]
             pay = kwargs["pay"]
         else:
-            print("invalid initializer:", kwargs) 
+            print("invalid initializer:", kwargs)
             return
         self.first = first
         self.last = last
@@ -260,7 +264,7 @@ print(emp_2)
 print("Employees:", Employee.num_of_emps)
 ----
 <1> Pass a tuple of values
-<2> Pass a string containing all the values
+<2> Pass a string encoding all the values
 
 We have managed to instantiate an Employee two ways: by
 passing a tuple of values, or by passing an encoded string.
@@ -302,7 +306,7 @@ print(emp_2)
 print("Employees:", Employee.num_of_emps)
 ----
 <1> Pass a tuple of values
-<2> Pass a string containing all the values
+<2> Pass a string encoding all the values
 
 Notice the callee side of this is identical.
 This is a little simpler looking, but it still feels awkward
@@ -318,9 +322,22 @@ There is another way to tackle this, which gets back to my
 objective in writing these posts - learning things added to
 Python since the "early days" of Python 2, and seeing how they
 can be used to make code nicer looking, and that is to use
-class methods.
+class methods. Class methods are not really new Python, they
+appeared in 2.2 and the decorator form was added in 2.4. Still,
+it's not something I had learned about in those early Python 2
+days.
 
-
+To know what's going on here, when a method is defined inside
+a class definition, it is by default what is called an instance
+method.  That means it receives an implicit first argument
+which is a reference to the instance object. By convention this
+argument is named `self`, though the name itself is not anything
+magical.  For a class method, this implicit argument is instead
+a reference to the class object, and is by convention named
+`cls`.  The simple way to set this up is to decorate the
+method definition with `@classmethod`. There is another kind
+of method known as a static method, which does not receive
+either an instance or class argument.
 
 [source,python]
 ----
@@ -351,3 +368,16 @@ print(Employee.num_of_emps)
 ----
 <1> Pass a tuple of values
 <2> Pass a string containing all the values, using the `from_string` classmethod
+
+This leaves something nice and clean looking, but for those
+who come from the "method overloading" point of view, it
+is true that the way the string form is instantitated is
+different.  Also note for symmetry, the tuple form could also
+be written as a class method, with both then calling to the
+initializer by calling through the class.  Then at least the
+invocation methods would look more similar, as in:
+[source,python]
+----
+emp_1 = Employee.from_tuple(first="John", last="Public", pay=50000)
+emp_2 = Employee.from_string(emp_str="Test-Employee-60000")
+----
