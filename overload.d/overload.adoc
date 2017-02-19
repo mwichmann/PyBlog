@@ -92,7 +92,7 @@ Hello
 ...     print "Hi, argument was", x
 ...
 >>> print(a)
-<function a at 0x7f7fa29b4cf8> // <1>
+<function a at 0x7f7fa29b4cf8>   # <1>
 >>> a()
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
@@ -211,10 +211,10 @@ to:
 class Foo:
     def __init__(self, x, y=None):
         self.x = x
-	self.y = y   // <1>
+        self.y = y   # <1>
 
-a = Foo(12)   // <2>
-b = Foo(12, 18.0)   // <3>
+a = Foo(12)   # <2>
+b = Foo(12, 18.0)   # <3>
 ----
 <1> Even if `y` was not passed, this is okay since it has now been set
 to default to something (`None` in this case). Of course, your code
@@ -223,9 +223,9 @@ has to be written to handle this.
 <3> New way, two arguments
 
 === Differing Class Instantiations
-The other example case has some more nuances.  Now we're considering
-different ways to instantitate a class by design, not just adding
-an additional parameter.  One way to approach this case is to use
+The other example case has some more nuances.  Now we're intentionally
+considering different ways to instantitate a class.
+One way to approach this case is to use
 Python's keyword argument passing scheme. Rather than trying to
 put this in words, look at this example:
 
@@ -241,6 +241,9 @@ class Employee:
             first = kwargs["first"]
             last = kwargs["last"]
             pay = kwargs["pay"]
+        else:
+            print("invalid initializer:", kwargs) 
+            return
         self.first = first
         self.last = last
         self.pay = pay
@@ -249,12 +252,75 @@ class Employee:
     def __str__(self):
         return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
 
-emp_1 = Employee(first="John", last="Public", pay=50000)
-emp_2 = Employee(emp_str="Test-Employee-60000")
+emp_1 = Employee(first="John", last="Public", pay=50000)   # <1>
+emp_2 = Employee(emp_str="Test-Employee-60000")            # <2>
 
 print(emp_1)
 print(emp_2)
+print("Employees:", Employee.num_of_emps)
 ----
+<1> Pass a tuple of values
+<2> Pass a string containing all the values
+
+We have managed to instantiate an Employee two ways: by
+passing a tuple of values, or by passing an encoded string.
+In the initializer, we try to work out which way we were
+called by digging around in the dictionary that is given
+to us as `kwargs`, then fishing the actual values out
+of there, and saving them in instance variables.
+So this is successfully emulating "overloading", but
+it feels kind of clunky.
+
+We might as well use default values instead:
+
+[source,python]
+----
+class Employee:
+    num_of_emps = 0
+
+    def __init__(self, pay=None, last=None, first=None, emp_str=None):
+        if emp_str:
+            first, last, pay = emp_str.split('-')
+        elif not (first and last and pay):
+            print("invalid initializer")
+            return
+
+        self.first = first
+        self.last = last
+        self.pay = pay
+        Employee.num_of_emps += 1
+
+    def __str__(self):
+        return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
+
+
+emp_1 = Employee(first="John", last="Public", pay=50000)   # <1>
+emp_2 = Employee(emp_str="Test-Employee-60000")            # <2>
+
+print(emp_1)
+print(emp_2)
+print("Employees:", Employee.num_of_emps)
+----
+<1> Pass a tuple of values
+<2> Pass a string containing all the values
+
+Notice the callee side of this is identical.
+This is a little simpler looking, but it still feels awkward
+because of making assumptions in the `__init__` function,
+based on possibly not terribly reliable information - in the first
+example we looked for the presence of key names in a dictionary,
+in this one we're looking for non-default values of named
+arguments: if the string value is present we use it, else
+we check that we have all three of the expected arguments in the
+other form, and go from there.
+
+There is another way to tackle this, which gets back to my
+objective in writing these posts - learning things added to
+Python since the "early days" of Python 2, and seeing how they
+can be used to make code nicer looking, and that is to use
+class methods.
+
+
 
 [source,python]
 ----
@@ -276,11 +342,12 @@ class Employee:
         return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
 
 
-emp_1 = Employee("John", "Public", 50000)
-emp_2 = Employee.from_string("Test-Employee-60000")
+emp_1 = Employee(first="John", last="Public", pay=50000)      # <1>
+emp_2 = Employee.from_string(emp_str="Test-Employee-60000")   # <2>
 
 print(emp_1)
 print(emp_2)
-
 print(Employee.num_of_emps)
 ----
+<1> Pass a tuple of values
+<2> Pass a string containing all the values, using the `from_string` classmethod
