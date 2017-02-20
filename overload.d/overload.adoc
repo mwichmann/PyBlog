@@ -102,13 +102,18 @@ TypeError: a() takes exactly 1 argument (0 given)
 Hi, argument was 8
 >>>
 ----
-<1> different address from previous function object
+<1> note different address from previous function object
 
-Note that sequence didn't show a class definition, but the
-assignment behavior is no different in that context.
+As an aside there does turn out to be a place where you can
+apparently have multiple method defintions of the same name,
+and that is when defining properties (getter/setter) - these
+are written decorated and are transformed by Python so they're
+not really the same name, but they look that way in your source
+code.  That's a topic for another time, though.
 
-However, since Python is not a strongly typed language, this situation is
-not necessarily a problem. Consider the following snippet:
+Anyway: you can not define multiple functions/methods of the
+same name, but since Python is not a strongly typed language, that is
+not necessarily any problem. Consider the following snippet:
 [source,python]
 ----
 class Foo:
@@ -122,8 +127,9 @@ b = Foo(18.0)
 That is, we've instantiated Foo with different types of arguments, with
 no code needed to deal with the difference.  Of course, you have to
 make sure the method you write in Python can actually handle arguments
-of different types.  Python _will_ let you check the type of something,
-along these lines:
+of different types.  Python _will_ let you check the type of an
+object, so you could go ahead and carefully check your arguments and make
+sure:
 
 [source,python]
 ----
@@ -169,7 +175,7 @@ subset of duck-like behaviour you need to play your language-games with.
 ____
 
 In this simple case, if your objective is to perform arithmetic on your
-arguments, integers and floats both have methods like add, subtract,
+arguments, then integers and floats do both have methods like add, subtract,
 multiply, etc. So there is not a compelling reason to treat them in
 different ways unless you actually run into a case where behavior
 is incompatible with your expectations.
@@ -207,6 +213,7 @@ a = Foo(12)
 ----
 
 to:
+
 [source,python]
 ----
 class Foo:
@@ -297,7 +304,6 @@ class Employee:
     def __str__(self):
         return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
 
-
 emp_1 = Employee(first="John", last="Public", pay=50000)   # <1>
 emp_2 = Employee(emp_str="Test-Employee-60000")            # <2>
 
@@ -357,7 +363,6 @@ class Employee:
 
     def __str__(self):
         return "Name: {} {}, Pay: {}".format(self.first, self.last, self.pay)
-
 
 emp_1 = Employee(first="John", last="Public", pay=50000)      # <1>
 emp_2 = Employee.from_string(emp_str="Test-Employee-60000")   # <2>
