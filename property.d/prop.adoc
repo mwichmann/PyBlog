@@ -237,7 +237,8 @@ we do save, and we've served up getter/setter pairs for both
 public variables.  Except there is really no hidden data
 in Python - starting a name with an underscore is a visual
 hint that we don't really intend something to be public, but
-that is all it is, a hint.  There is nothing special about
+that is all it is, a hint (a leading single underscore only
+"matters" in imports). There is nothing special about
 `_angle_deg`, it's just saved and restored like
 an ordinary variable. So why not dispense with the property stuff
 for this one and just make `angle_deg` an instance variable,
