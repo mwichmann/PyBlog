@@ -100,7 +100,7 @@ up a property given arguments which describe the methods which
 implement the property behavior.  The arguments are in order
 are the getter, setter, deleter, and docstring; they're
 successively optional so if you pass only one argument to
-property only a setter is assigned.
+property only a getter is assigned.
 
 [source,python]
 ----
