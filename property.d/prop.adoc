@@ -227,20 +227,24 @@ By decorating the pair of angle and angle_deg methods, we've
 turned them into getter/setter methods, just like the call to the
 `property()` function did, but this looks cleaner, you can
 immediately see what each method is for rather than going hunting
-for the `property` call.
+for the `property` call. Notice that the method names have to
+be the same for all the parts of the property; for the setter and 
+deleter the decorator also takes the name of the method.
 
 I don't particularly like this code, though... we are using a
 sort of hidden instance variable to actually hold the value
 we do save, and we've served up getter/setter pairs for both
-two public variables.  Except there is really no hidden data
+public variables.  Except there is really no hidden data
 in Python - starting a name with an underscore is a visual
 hint that we don't really intend something to be public, but
 that is all it is, a hint.  There is nothing special about
 `_angle_deg`, it's just saved and restored like
 an ordinary variable. So why not dispense with the property stuff
 for this one and just make `angle_deg` an instance variable,
-then we don't need `_angle_deg` at all. If we need to do something
-"special" with `angle_deg` we can always turn it back into a property.
+then we don't need `_angle_deg` at all. If we find we need to do something
+"special" with `angle_deg` later we can always turn it back into
+a property. This is the Python flexibility I was referring to
+at the beginning of this article.
 Here's the refactored code, which is now quite a bit shorter:
 
 [source,python]
