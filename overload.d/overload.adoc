@@ -2,7 +2,7 @@
 
 The title of the post is a question that seems to come up quite often
 in beginner forums, you can find a lot of hits in a web search,
-on Stackoverflow, etc.
+on Stack overflow, etc.
 Not surprisingly, it usually comes from people who have worked
 in languages where method/function overloading is a big part of the
 language design.
@@ -66,14 +66,16 @@ creation of a class instance, not the creation part, so the
 --
 
 Python syntax does not allow multiple functions/methods to take the
-same name. Sometimes the way this works can be a little surprising:
+same name within the same scope - just like with variables.
+People are sometimes a little surprised at this, but
 a Python function definition is an executable statement, in which
 two things happen: a function object is created from the body of
 the definition, and a reference to that object is then assigned to
-a variable with the name of the function. So two
-function definitions of the same name is just like assigning two different
-values to any other variable, the second assignment replaces the first.
-That's not what method overloaders expect...
+a variable with the name of the function - it's just another
+variable assignment. So assigning two different
+functions to the same name just means the second one replaces the first.
+It's "override" rather than "overload".
+
 We can show this sequence with a bit of interactive Python use:
 
 [source,python]
@@ -107,15 +109,15 @@ Hi, argument was 8
 [sidebar]
 --
 As an aside there does turn out to be a place where you can
-apparently have multiple method defintions of the same name,
+apparently have multiple method definitions of the same name,
 and that is when defining properties (getter/setter) - these
 are written decorated and are transformed by Python so they're
 not really the same name, but they look that way in your source
 code.  That's a topic for another time, though.
 --
 
-Anyway: you can not define multiple functions/methods of the
-same name, but since Python is not a strongly typed language, that is
+So while you can not define multiple functions/methods of the
+same name, since Python is not a strongly typed language, that is
 not necessarily any problem. Consider the following snippet:
 [source,python]
 ----
@@ -125,14 +127,15 @@ class Foo:
 
 a = Foo(12)
 b = Foo(18.0)
+c - Foo("text")
 ----
 
-That is, we've instantiated Foo with different types of arguments, with
-no code needed to deal with the difference.  Of course, you have to
-make sure the method you write in Python can actually handle arguments
-of different types.  Python _will_ let you check the type of an
-object, so you could go ahead and carefully check your arguments and make
-sure:
+That is, we've instantiated with three different types of arguments,
+but the initializer doesn't look any different.
+Of course, you have to make sure the method you write in Python can
+actually handle arguments of different types.  Python _will_ let you
+check the type of an object, so you could go ahead and carefully check
+your arguments and make sure:
 
 [source,python]
 ----
@@ -174,7 +177,7 @@ intentionally a little silly:
 ____
 In other words, don't check whether it IS-a duck: check whether it
 QUACKS-like-a duck, WALKS-like-a duck, etc, etc, depending on exactly what
-subset of duck-like behaviour you need to play your language-games with.
+subset of duck-like behavior you need to play your language-games with.
 ____
 
 In this simple case, if your objective is to perform arithmetic on your
@@ -189,7 +192,7 @@ may need to take different numbers of arguments.  This can come up
 in a few different ways, to list a couple of examples:
 
 * You want to offer different ways to instantiate a class, as in a
-hypotetical employee database where a new employee can be added by a
+hypothetical employee database where a new employee can be added by a
 (Firstname, Lastname, Salary) triple, or by a string encoding all
 three as "Firstname-Lastname-Salary".
 * API evolution: say you've implemented a class, and then later find out
@@ -227,16 +230,15 @@ class Foo:
 a = Foo(12)   # <2>
 b = Foo(12, 18.0)   # <3>
 ----
-<1> Even if `y` was not passed, this is okay since it has now been set
-to default to something (`None` in this case). Of course, your code
-has to be written to handle this.
+<1> Even if `y` was not passed, this is okay since it is set to
+default to something (`None` in this case).
 <2> Old way, one argument, still works
 <3> New way, two arguments
 
 === Differing Class Instantiations
-The other example case has some more nuances.  We're intending,
+The other example case has some more nuances.  It suggests we're intending,
 up front, to allow the class to instantiated in quite different
-ways (although this change could of course also happen as an
+ways (although this change could of course also happen as part of an
 evolution)
 
 One way to approach this case is to use
@@ -281,11 +283,11 @@ passing a tuple of values, or by passing an encoded string.
 In the initializer, we try to work out which way we were
 called by digging around in the dictionary that is given
 to us as `kwargs`, then fishing the actual values out
-of there, and saving them in instance variables.
-So this is successfully emulating "overloading", but
-it feels kind of clunky.
+of that dict, and saving them in instance variables.
+So this is certainly a form of "overloading", though it
+feels kind of clunky.
 
-We might as well use default values instead:
+We might as well try using default values instead:
 
 [source,python]
 ----
@@ -317,7 +319,7 @@ print("Employees:", Employee.num_of_emps)
 <1> Pass a tuple of values
 <2> Pass a string encoding all the values
 
-Notice the callee side of this is identical.
+Notice the caller side of this is identical - the "API" is the same.
 This is a little simpler looking, but it still feels awkward
 because of making assumptions in the `__init__` function,
 based on possibly not terribly reliable information - in the first
@@ -377,10 +379,11 @@ print(Employee.num_of_emps)
 <1> Pass a tuple of values
 <2> Pass a string containing all the values, using the `from_string` classmethod
 
-This leaves something nice and clean looking, but for those
+This leaves something nice and clean looking. I will admit for those
 who come from the "method overloading" point of view, it
-is true that the way the string form is instantitated is
-different.  Also note for symmetry, the tuple form could also
+the way the string form is instantiated is different so it
+doesn't look quite like classical overloading any more.
+Also note for symmetry, the tuple form could also
 be written as a class method, with both then calling to the
 initializer by calling through the class.  Then at least the
 invocation methods would look more similar, as in:
@@ -389,3 +392,4 @@ invocation methods would look more similar, as in:
 emp_1 = Employee.from_tuple(first="John", last="Public", pay=50000)
 emp_2 = Employee.from_string(emp_str="Test-Employee-60000")
 ----
+
