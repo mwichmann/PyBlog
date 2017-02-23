@@ -1,3 +1,5 @@
+= Properties in Python
+
 Encapsulation is an important concept in object-oriented programming.
 Encapsulation just means that some information is not available directly
 from outside the encapsulating object, only through specially provided
@@ -7,12 +9,12 @@ without breaking things, because people using this code aren't able to
 poke around inside and count on details they've discovered, they have
 to use the accessor methods.
 
-== Properties
+== What is a property?
 
 Here's a contrived example, a fragmentary class describing
 a person, where we've only shown one piece of data, the age of the person:
 
-[source,c++]
+[source,java]
 ----
 class Person
 {
@@ -20,8 +22,8 @@ class Person
 public:
     Person() : age(0) { }
 
-    int getAge() { return age; }
-    void setAge(int x) { age = x; }
+    int getAge() { return this.age; }
+    void setAge(int x) { this.age = x; }
 };
 ----
 
@@ -40,21 +42,32 @@ A lot of developers don't like this kind of code; it does accomplish
 a useful function if you need it, but because you can't necessarily
 guess when you're going to need it, when you're writing in a language
 like Java, and to a slightly lesser extent C++, you have to set up the
-getter/setter methods for variables up front in anticipation you might
-need them later - since the interface has a binary (ABI) nature, if you
-didn't use getter/setter, and then add that, you've broken programs
+getter/setter methods for variables up front, in anticipation that you 
+might need them later - since the interface has a binary (ABI) nature, 
+if you didn't use getter/setter, and then add that, you've broken programs
 depending on the older behavior.  This bloats the code and you never
 know if it was needed, and adds no actual value to the code. That is,
 you can easily go from 30 lines to 100 lines in your source file without
 any new value being introduced.  Ah, but no problem, right?  My IDE just
 built those for me...
 
-There's an aesthetic concern regarding the syntax, also. A Person instance
+There's an aesthetic concern regarding the syntax, also. A `Person` instance
 includes that person's age, but we can't perform natural operations on
-that age - if `a` is an instance, we can't access `a.age` or set it,
-we have to use `a.getAge()` and `a.setAge()`.
+that age - if `person` is an instance, we can't access `person.age` or
+set it, we have to use `person.getAge()` and `person.setAge()`.
 
-The C# language at least improves on the syntax part of this:
+The C# language improves on this by providing properties.
+C# defines properties thus:
+
+____
+A property is a member that provides a flexible mechanism to read, write,
+or compute the value of a private field. Properties can be used as if
+they are public data members, but they are actually special methods
+called accessors. This enables data to be accessed easily and still
+helps promote the safety and flexibility of methods.
+____
+
+A simple example looks like this:
 
 [source,c#]
 ----
@@ -64,25 +77,26 @@ class Person
 
     public int Age
     {
-        get { return age; }
-        set { age = value; }
+        get { return this.age; }
+        set { this.age = value; }
     }
 }
 ----
 
-Because here `Age` behaves like it was a variable. Since C# considers
-this a Property, and property access is though the getter/setter methods,
-we can now directly access `a.Age` and it "looks like" a variable.
+So if `person` is an instance of `Person`, `a.Age` (but not
+`person.age`) can be accessed externally as if it were a variable.
+That leads to the ability to write the much nicer `person.Age += 1` 
+instead of `person.setAge(person.getAge()) + 1`.
 
-As a dynamic language, Python doesn't have the limitation of
-static languages, in that you can change the implementation,
-as long as you don't break it, without causing problems to clients.
-Python has a property concept like C# - you can set up getter/setter
-methods to data in a class. But you can defer implementing them until
-you need them - you can have an instance variable which is directly
-accessible, then if the implementation needs to do something more
-complex than a simple variable, you can change to properties but
-it will look the same to the client.
+== Properties in Python
+
+Python has properties too, but there is another benefit in
+Python: as a dynamic language, it does not have the limitation of
+static languages, you can change the implementation,
+without causing problems to clients because you're not dealing
+with a compiled interface.  This means you can define an instance
+variable first, then evolve it to a property later if needed,
+and it will not break clients.
 
 Here is a series of examples showing how properties work in Python.
 
@@ -90,10 +104,12 @@ Consider a Vector class that should include both an angle in
 radians and an angle in degrees.  This provides an excuse to
 use a getter method - we don't actually need to store both angles
 in the instance, and indeed we don't even want to, because they're
-reltated, and if someone updates one angle, we have a problem
+related, and if someone updates one angle, we have a problem
 because the other one needs to change in sync with it.  It's
 nicer to store one, and generate the other one on demand - that
 solves the sync problem.
+
+=== Using the `property` function
 
 Python provides the built-in `property()` function which sets
 up a property given arguments which describe the methods which
@@ -164,6 +180,8 @@ Here's the output of one run:
   <built-in method setter of property object at 0x7fab7d3d9818>
 ----
 
+=== Using the property decorators
+
 Python provides decorators that have the same effect as
 the the call to the `property` function. `@property` is used
 for the getter, `@name.setter` for the setter and
@@ -231,21 +249,28 @@ for the `property` call. Notice that the method names have to
 be the same for all the parts of the property; for the setter and 
 deleter the decorator also takes the name of the method.
 
-I don't particularly like this code, though... we are using a
-sort of hidden instance variable to actually hold the value
-we do save, and we've served up getter/setter pairs for both
-public variables.  Except there is really no hidden data
-in Python - starting a name with an underscore is a visual
-hint that we don't really intend something to be public, but
-that is all it is, a hint (a leading single underscore only
-"matters" in imports). There is nothing special about
-`_angle_deg`, it's just saved and restored like
-an ordinary variable. So why not dispense with the property stuff
-for this one and just make `angle_deg` an instance variable,
-then we don't need `_angle_deg` at all. If we find we need to do something
-"special" with `angle_deg` later we can always turn it back into
-a property. This is the Python flexibility I was referring to
-at the beginning of this article.
+=== Code Simplification
+
+I don't particularly like this code, though. We are using a sort of
+hidden instance variable as the backing field which holds the value,
+and we've served up getter/setter pairs for both public variables.
+Except there is really no hidden data in Python - starting a name with
+an underscore is a visual hint that we don't intend something to be
+public, but that is all it is, a hint (a leading single underscore only
+"matters" in imports).  That means someone could actually fiddle directly
+with the backing field `_angle_deg`, bypassing the getter/setter,
+if they were so motivated. In the trivial example here, that doesn't
+introduce any new problems, but in a setter which does a bunch of
+validation so you know an invalid value is never stored, it is not ideal.
+And in fact, that the setter for `angle_deg` does not do anything
+special is my other complaint: why implement a getter/setter when
+there is no need to?
+
+So why not unroll the property definition that does not seem needed
+and just make `angle_deg` an instance variable, then we don't need
+`_angle_deg` at all. If we find we need to do something "special" with
+`angle_deg` later we can always turn it back into a property. This is the
+Python flexibility I was referring to at the beginning of this article.
 Here's the refactored code, which is now quite a bit shorter:
 
 [source,python]
