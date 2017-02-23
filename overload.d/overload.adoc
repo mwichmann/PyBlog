@@ -2,7 +2,7 @@
 
 The title of the post is a question that seems to come up quite often
 in beginner forums, you can find a lot of hits in a web search,
-on Stack overflow, etc.
+on Stackoverflow, etc.
 Not surprisingly, it usually comes from people who have worked
 in languages where method/function overloading is a big part of the
 language design.
@@ -16,15 +16,16 @@ of that function appropriate to the context of the call, allowing one
 function call to perform different tasks depending on context.
 ____
 
-Sometimes this question ends up dismissed as stupid, because you
-don't need that in Python. I'd like to take some time to talk about
-it, because the ideas behind it aren't worthless.
+Sometimes this question ends up dismissed as stupid in the Python
+context, ``because you don't need that in Python''. 
+I'd like to take some time to talk about
+that, because the ideas behind it aren't worthless.
 
 == Arguments of Differing Types
 
 As a simplistic example, consider a class which should work whether
 an argument to a class constructor is an integer or a double-precision
-floating point number. Consider this C++ syntax pseudo-code:
+floating point number. Consider this {cpp} syntax pseudo-code:
 
 [source,c++]
 ----
@@ -49,21 +50,12 @@ Foo a = new(Foo(12));
 Foo b = new(Foo(18.0));
 ----
 
-So, two different constructor functions both named after the class
-(as that is the C+\+ syntax). C++ needs that information up front, or
+So, two different constructor functions both named after the class,
+as that is the $$C++$$ syntax.  $$C++$$ needs that information up front, or
 the compiler will throw type errors on compilation, as it's an error to
 pass an argument of one type to a function expecting a different type.
-
-[sidebar]
---
-Note that Python doesn't exactly
-have a single "constructor". The `__init__` method is part of the
-construction process, but is actually not called until the object
-has already been constructed, by a different method `__new__`.
-However, we're interested in the initialization part of the
-creation of a class instance, not the creation part, so the
-`__init__` method is the relevant one here.
---
+Overloading is often discussed in terms of constructors, though it
+is not limited to those methods. 
 
 Python syntax does not allow multiple functions/methods to take the
 same name within the same scope - just like with variables.
@@ -71,10 +63,14 @@ People are sometimes a little surprised at this, but
 a Python function definition is an executable statement, in which
 two things happen: a function object is created from the body of
 the definition, and a reference to that object is then assigned to
-a variable with the name of the function - it's just another
-variable assignment. So assigning two different
+a variable with the name of the function - in other words, a
+`def` statement is variable assignment. So assigning two different
 functions to the same name just means the second one replaces the first.
 It's "override" rather than "overload".
+In the case of Python, the method we are interested in is `__init__`.
+It is not exactly a constructor, but as the method called automatically
+after construction, the behavior that people associate with
+constructors (``set things up'') happens here.
 
 We can show this sequence with a bit of interactive Python use:
 
