@@ -207,7 +207,7 @@ the trick. So we can go from:
 
 [source,python]
 ----
-class Foo:
+class Foo(object):
     def __init__(self, x):
         self.x = x
 
@@ -218,7 +218,7 @@ to:
 
 [source,python]
 ----
-class Foo:
+class Foo(object):
     def __init__(self, x, y=None):
         self.x = x
         self.y = y   # <1>
@@ -243,7 +243,7 @@ put this in words, here's an example:
 
 [source,python]
 ----
-class Employee:
+class Employee(object):
     num_of_emps = 0
 
     def __init__(self, **kwargs):
@@ -287,7 +287,7 @@ We might as well try using default values instead:
 
 [source,python]
 ----
-class Employee:
+class Employee(object):
     num_of_emps = 0
 
     def __init__(self, pay=None, last=None, first=None, emp_str=None):
@@ -348,7 +348,7 @@ either an instance or class argument.
 
 [source,python]
 ----
-class Employee:
+class Employee(object):
     num_of_emps = 0
 
     def __init__(self, first, last, pay):
