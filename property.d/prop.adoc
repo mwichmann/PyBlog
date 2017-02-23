@@ -92,7 +92,7 @@ person.Age += 1
 
 instead of 
 [source,c#]
-person.setAge(person.getAge()) + 1
+person.setAge(person.getAge() + 1)
 
 == Properties in Python
 
