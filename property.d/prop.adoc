@@ -151,20 +151,23 @@ class Vector(object):
 ----
 
 We can do some experiments with this class - in the first
-two chunks of lines below we create an instance with a starting value
-and print both angles, then change the angle and print
-both again.  In the next chunk, we ask for some information
-about the objects in question
+set of lines below we create an instance with a starting value
+and print both angles, then change the first the `angle`
+then the `angle_deg` values to show they're working in unison.
+In the final chunk, we ask for some information
+about the objects in question to illustrate how Python
+has set this up.
 
 [source,python]
 ----
 v = Vector(2*math.pi)
-print(v.angle)
-print(v.angle_deg)
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
 
 v.angle = math.pi
-print(v.angle)
-print(v.angle_deg)
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
+
+v.angle_deg = 90.0
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
 
 print(Vector.angle, Vector.angle.getter, Vector.angle.setter)
 print(Vector.angle_deg, Vector.angle_deg.getter, Vector.angle_deg.setter)
@@ -174,10 +177,9 @@ Here's the output of one run:
 
 [source,python]
 ----
-6.283185307179586
-360.0
-3.141592653589793
-180.0
+Rad: 6.283185307179586, Deg: 360.0
+Rad: 3.141592653589793, Deg: 180.0
+Rad: 1.5707963267948966, Deg: 90.0
 <property object at 0x7fab853b5f48>
   <built-in method getter of property object at 0x7fab853b5f48>
   <built-in method setter of property object at 0x7fab853b5f48>
@@ -221,12 +223,13 @@ class Vector(object):
         self._angle_deg = value
 
 v = Vector(2*math.pi)
-print(v.angle)
-print(v.angle_deg)
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
 
 v.angle = math.pi
-print(v.angle)
-print(v.angle_deg)
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
+
+v.angle_deg = 90.0
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
 
 print(Vector.angle, Vector.angle.getter, Vector.angle.setter)
 print(Vector.angle_deg, Vector.angle_deg.getter, Vector.angle_deg.setter)
@@ -236,10 +239,9 @@ And the output of our experiments:
 
 [source,python]
 ----
-6.283185307179586
-360.0
-3.141592653589793
-180.0
+Rad: 6.283185307179586, Deg: 360.0
+Rad: 3.141592653589793, Deg: 180.0
+Rad: 1.5707963267948966, Deg: 90.0
 <property object at 0x7f7ba29b5818>
   <built-in method getter of property object at 0x7f7ba29b5818>
   <built-in method setter of property object at 0x7f7ba29b5818>
@@ -248,9 +250,9 @@ And the output of our experiments:
   <built-in method setter of property object at 0x7f7ba29b5868>
 ----
 
-By decorating the angle and angle_deg method pairs, we've
+By decorating the `angle` and `angle_deg` method pairs, we've
 turned them into properties with getter/setter methods, 
-just like the call to the `property()` function did, 
+just like the call to the `property` function did, 
 but this looks cleaner, you can immediately see what each 
 method is for rather than going hunting to see they're
 later part of a `property` call. Notice that the method names have to
@@ -274,15 +276,14 @@ And in fact, that the setter for `angle_deg` does not do anything
 special is my other complaint: why implement a getter/setter when
 there is no need to?
 
-So why not unroll the property definition that does not seem needed
+So why not undo the property definition that does not seem needed
 and just make `angle_deg` an instance variable, then we don't need
 `_angle_deg` at all. If we find we need to do something "special" with
 `angle_deg` later we can always turn it back into a property. 
 Notice in the initializer, we are invoking the property setter,
 because we assign to `angle`.  As a next refactor, I would probably
 turn this around and use the radians form as the instance
-variable to make it all feel more natural.
-This is the
+variable to make it all feel more natural.  This is the
 Python flexibility I was referring to at the beginning of this article.
 Here's the refactored code, which is now quite a bit shorter:
 
@@ -303,22 +304,22 @@ class Vector(object):
     def angle(self, value):
         self.angle_deg = math.degrees(value)
 
-
 v = Vector(2 * math.pi)
-print(v.angle)
-print(v.angle_deg)
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
 
 v.angle = math.pi
-print(v.angle)
-print(v.angle_deg)
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
+
+v.angle_deg = 90.0
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
 ----
 
 This works just the same, as we see from the output:
 
 [source,python]
 ----
-6.283185307179586
-360.0
-3.141592653589793
-180.0
+Rad: 6.283185307179586, Deg: 360.0
+Rad: 3.141592653589793, Deg: 180.0
+Rad: 1.5707963267948966, Deg: 90.0
 ----
+

@@ -15,9 +15,10 @@ class Vector(object):
 
 
 v = Vector(2 * math.pi)
-print(v.angle)
-print(v.angle_deg)
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
 
 v.angle = math.pi
-print(v.angle)
-print(v.angle_deg)
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
+
+v.angle_deg = 90.0
+print("Rad: {}, Deg: {}".format(v.angle, v.angle_deg))
