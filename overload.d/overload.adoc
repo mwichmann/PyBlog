@@ -67,7 +67,7 @@ a variable with the name of the function - in other words, a
 `def` statement is variable assignment. So assigning two different
 functions to the same name just means the second one replaces the first.
 It's "override" rather than "overload".
-In the case of Python, the method we are interested in is `__init__`.
+In the case of Python, the method we are interested in is `$$__init__$$`.
 It is not exactly a constructor, but as the method called automatically
 after construction, the behavior that people associate with
 constructors (``set things up'') happens here.
@@ -317,7 +317,7 @@ print("Employees:", Employee.num_of_emps)
 
 Notice the caller side of this is identical - the "API" is the same.
 This is a little simpler looking, but it still feels awkward
-because of making assumptions in the `__init__` function,
+because of making assumptions in the `$$__init__$$` function,
 based on possibly not terribly reliable information - in the first
 example we looked for the presence of key names in a dictionary,
 in this one we're looking for non-default values of named
