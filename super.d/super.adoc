@@ -1,0 +1,268 @@
+= Python Classes: inherit, override, extend
+
+Here is a question that comes up from time to time
+with beginners:  ``I defined a derived class but it is
+not getting data from the base class.  What\'s going on?''
+
+Here is a bit of example code that shows the "problem":
+
+[source,python]
+----
+class A(object):
+    def __init__(self):
+        self.aa = 'instance of class A'
+
+class B(A):
+    def __init__(self):
+        self.bb = 'instance of class B'
+
+b = B()
+print(b.aa)
+----
+
+But this fails:
+
+[source,python]
+----
+Traceback (most recent call last):
+  File "inherit.py", line 34, in <module>
+    print("b.aa:", b.aa)
+AttributeError: 'B' object has no attribute 'aa'
+----
+
+Wait, what?  I thought the derived class inherited from
+the base class, yet the variable `aa` set in the base
+class does not exist?
+
+== Viewing Class Inheritance Details
+
+The answer is that is how classes work in Python. But to
+explain that I want to detour to point out how easy it is to
+insert print statements to figure out what Python is doing.
+Following is an expanded example that adds prints in a lot
+of places to help see what is happening.
+
+----
+#!/usr/bin/python3
+
+class A(object):
+    print('Setting class variables in A')
+    aa_cls = 'class A'
+
+    def __init__(self):
+        print('Initializing instance of', self.__class__.__name__)
+        self.aa = 'instance of class A'
+
+    def ameth(self):
+        return "A method from class A"
+
+class B(A):
+    print('Setting class variables in B')
+    bb_cls = 'class B'
+
+    def __init__(self):
+        print('Initializing instance of', self.__class__.__name__)
+        self.bb = 'instance of class B'
+
+print("Begin examination...")
+print("Data from classes:")
+print("A.aa_cls:", A.aa_cls)
+print("B.aa_cls:", B.aa_cls)
+
+print("Instantiating A as a:")
+a = A()
+print("Data from instance a:")
+print("a.aa_cls:", a.aa_cls)
+print("a.aa:", a.aa)
+print("call ameth directly from a:", a.ameth())
+
+print("Instantiating B as b:")
+b = B()
+print("Data from instance b:")
+print("b.bb_cls:", b.bb_cls)
+print("b.bb:", b.bb)
+print("b.aa_cls:", b.aa_cls)
+print("call ameth from b:", b.ameth())
+print("b.aa:", b.aa)
+----
+
+[source,python]
+----
+Setting class variables in A	# <1>
+Setting class variables in B
+Begin examination...
+Data from classes:
+A.aa_cls: class A		# <2>
+B.aa_cls: class A
+Instantiating A as a:
+Initializing instance of A	# <3>
+Data from instance a:
+a.aa_cls: class A		# <4>
+a.aa: instance of class A
+call ameth directly from a: A method from class A
+Instantiating B as b:
+Initializing instance of B	# <5>
+Data from instance b:
+b.bb_cls: class B
+b.bb: instance of class B
+b.aa_cls: class A		# <6>
+call ameth from b: A method from class A
+Traceback (most recent call last):
+  File "./override.py", line 41, in <module>
+    print("b.aa:", b.aa)
+AttributeError: 'B' object has no attribute 'aa'
+----
+<1> The two assignments of class data happen
+before anything: a class definition is an
+executable statement, executed when reached in the file.
+<2> You can access the class data before any
+instances are created.
+<3> The class A initializer is called when A is instantiated.
+<4> Data from an instance of the base class is as expected.
+<5> The class B initializer (only) is called when B is instantiated.
+<6> The class data from the base class and the method from
+the base class are inherited as expected.
+
+So we should have a good idea what happened.  Instantiating the
+derived class never called the `$$__init__$$` method in the base class.
+That is because inheritance is very straightforward in Python... if
+the base class defines something and the derived class does not,
+the derived class gets the base\'s copy. But to Python, we have
+overridden the base\'s definiton of `$$__init__$$`, so it is never called
+- the definition in the derived class comes first.  There is a term
+for the way things are looked up, the 'Method Resolution Order' (MRO).
+The documentation is quite detailed because it deals also with complex
+multiple inheritance questions (note many OO languages just avoid this
+by not allowing multiple inheritance), but the situation here is quite
+simple: we just walk up the tree, and if it is not found in any of the
+explicit defintions, it will pick the method from the `object` class,
+which is the base of all so-called New-Style Classes.
+
+So as a first step, we can "fix" our initial problem by
+calling in to the base class initializer:
+
+[source,python]
+----
+class A(object):
+    def __init__(self):
+        self.aa = 'instance of class A'
+
+class B(A):
+    def __init__(self):
+        A.__init__(self)
+        self.bb = 'instance of class B'
+
+b = B()
+print(b.aa)
+----
+
+And now the output is as expected:
+
+[source,python]
+instance of class A
+
+There is a little subtlety here: because we are calling
+class `A` by name, rather than through an instance,
+then `A`\'s `$$__init__$$` does not get automatically supplied with
+an instance reference and you would get an error
+(specifically,
+`TypeError: __init__() missing 1 required positional argument: \'self\'`).
+So we need to supply the instance reference explicitly.
+
+This behavior is not limited to the `$$__init__$$` function,
+any method of the base class can be called, which means
+the derived class has the flexibility to tailor the behavior
+it wants: inherit from the base clase without doing
+anything, override the base class, or "extend" the base class by
+doing some local work before or after calling the base
+class's method.
+You can even extend methods from builtin classes - the
+facility is by no means delimited to your own classes.
+
+=== Aside: The Method Resolution Order
+
+If you are interested in the MRO, it can actually just
+be printed out. For the code above, add this line:
+
+[source,python]
+----
+print(B.__mro__)
+----
+
+Which would give this response:
+
+[source,python]
+----
+(<class '__main__.B'>, <class '__main__.A'>, <type 'object'>)
+----
+
+As noted earlier, this was a simple case with no surprises.
+
+=== Aside: Introspection
+
+Python makes it easy to look inside objects to see what
+they look like.  For example, to see data defined in an instance,
+we can print out the `$$__dict__$$` attribute of the instance.
+[source,python]
+----
+print("Dict:", b.__dict__)
+----
+
+Before adding the the call to the base class initializer:
+[source,python]
+----
+Dict: {'bb': 'instance of class B'}
+----
+
+After:
+[source,python]
+----
+Dict: {'bb': 'instance of class B', 'aa': 'instance of class A'}
+----
+
+== The `super` method
+
+All of the above we pretty standard stuff about how Python
+classes work. There can always be surprises when you come from
+a familiar language to a new one and things look kind of
+similar but something is subtly different,
+but that is just part of learning.
+
+Calling to a base class by name, however, may or may not
+be a good idea.  It is very clear what you mean, but it
+is not very flexible.  You hardcode a name; if you later
+change the definition of the derived class to inherit
+from some other class, you have to update any calls to
+the previous base class to update the name. And if you
+start playing with multiple inheritance (warning: scary
+stuff!!!) then you have to do some work to figure out
+where to actually call to - see the MRO aside. This is
+a potential code maintainability issue.
+
+There is a tool to make that happen cleanly, the built
+in `super` function. In Python3 `super` is easy to use
+in simple cases.  For our modified short example, replace
+the explicit call to `A`\'s initializer with this:
+
+[source,python]
+----
+super().__init__()
+----
+
+`super` is going to use data from the context of the call
+to figure out where to delegate it to: the class where the call
+appears,  and the ancestry tree of the instance.
+So we do not need to supply the `self`
+argument in this case, unlike the hardwired call.
+
+In Python2, you have to supply it some arguments,
+for the case we have been looking at, the call would
+look like:
+
+[source,python]
+----
+super(B, self).__init__()
+----
+
+The two-argument form from Python2 still works in Python3,
+but Python3\'s zero-argument form does not work in Python2.
