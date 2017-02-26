@@ -266,3 +266,15 @@ super(B, self).__init__()
 
 The two-argument form from Python2 still works in Python3,
 but Python3\'s zero-argument form does not work in Python2.
+
+Somewhat surprisingly, `super` is rather controversial
+in the Python community, there have been blog posts and
+flame wars on whether it is a good thing or bad thing.
+Most of that centers around complex inheritance trees,
+especially multiple inheritance.  I see no reason not
+to use it as described in this post.  If things get more
+complicated, you do need to make sure the arguments line
+up between caller and callee, and because `super` doesn't
+tell you what the callee is, that is work you have to take
+care of manually.
+
