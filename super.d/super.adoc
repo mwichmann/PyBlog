@@ -22,7 +22,6 @@ print(b.aa)
 
 But this fails:
 
-[source,python]
 ----
 Traceback (most recent call last):
   File "inherit.py", line 34, in <module>
@@ -42,6 +41,7 @@ insert print statements to figure out what Python is doing.
 Following is an expanded example that adds prints in a lot
 of places to help see what is happening.
 
+[source,python]
 ----
 #!/usr/bin/python3
 
@@ -86,26 +86,25 @@ print("call ameth from b:", b.ameth())
 print("b.aa:", b.aa)
 ----
 
-[source,python]
 ----
-Setting class variables in A	# <1>
+Setting class variables in A	<1>
 Setting class variables in B
 Begin examination...
 Data from classes:
-A.aa_cls: class A		# <2>
+A.aa_cls: class A		<2>
 B.aa_cls: class A
 Instantiating A as a:
-Initializing instance of A	# <3>
+Initializing instance of A	<3>
 Data from instance a:
-a.aa_cls: class A		# <4>
+a.aa_cls: class A		<4>
 a.aa: instance of class A
 call ameth directly from a: A method from class A
 Instantiating B as b:
-Initializing instance of B	# <5>
+Initializing instance of B	<5>
 Data from instance b:
 b.bb_cls: class B
 b.bb: instance of class B
-b.aa_cls: class A		# <6>
+b.aa_cls: class A		<6>
 call ameth from b: A method from class A
 Traceback (most recent call last):
   File "./override.py", line 41, in <module>
@@ -123,19 +122,21 @@ instances are created.
 <6> The class data from the base class and the method from
 the base class are inherited as expected.
 
-So we should have a good idea what happened.  Instantiating the
-derived class never called the `$$__init__$$` method in the base class.
-That is because inheritance is very straightforward in Python... if
+So have a good idea what happened.  Instantiating the
+derived class never called the +$$__init__$$+ method in the base class.
+That is because inheritance is very straightforward in Python: if
 the base class defines something and the derived class does not,
-the derived class gets the base\'s copy. But to Python, we have
-overridden the base\'s definiton of `$$__init__$$`, so it is never called
-- the definition in the derived class comes first.  There is a term
-for the way things are looked up, the 'Method Resolution Order' (MRO).
-The documentation is quite detailed because it deals also with complex
+the reference resolves to the one in the base class. But here
+we have defined an +$$__init__$$+, so the reference resolves to it.
+There is no "magic" in the sense that some methods are 
+invoked anyway, even if overridden.
+Python has a term for the way things are looked up, 
+the 'Method Resolution Order' (MRO).
+The MRO documentation is quite detailed because it deals also with complex
 multiple inheritance questions (note many OO languages just avoid this
 by not allowing multiple inheritance), but the situation here is quite
-simple: we just walk up the tree, and if it is not found in any of the
-explicit defintions, it will pick the method from the `object` class,
+simple: we just walk up the tree, and if a method is not found in any of
+the explicit defintions, it will pick the method from the `object` class,
 which is the base of all so-called New-Style Classes.
 
 So as a first step, we can "fix" our initial problem by
@@ -158,24 +159,24 @@ print(b.aa)
 
 And now the output is as expected:
 
-[source,python]
+----
 instance of class A
+----
 
 There is a little subtlety here: because we are calling
-class `A` by name, rather than through an instance,
-then `A`\'s `$$__init__$$` does not get automatically supplied with
-an instance reference and you would get an error
-(specifically,
-`TypeError: __init__() missing 1 required positional argument: \'self\'`).
+class `A` by name, rather than through an instance, the
+the +$$__init__$$+ method of `A` does not get automatically supplied with
+an instance reference and you would get an error (specifically,
+`TypeError: __init__() missing 1 required positional argument: 'self'`).
 So we need to supply the instance reference explicitly.
 
-This behavior is not limited to the `$$__init__$$` function,
+This behavior is not limited to the +$$__init__$$+ function,
 any method of the base class can be called, which means
 the derived class has the flexibility to tailor the behavior
 it wants: inherit from the base clase without doing
 anything, override the base class, or "extend" the base class by
 doing some local work before or after calling the base
-class's method.
+class method.
 You can even extend methods from builtin classes - the
 facility is by no means delimited to your own classes.
 
@@ -191,7 +192,6 @@ print(B.__mro__)
 
 Which would give this response:
 
-[source,python]
 ----
 (<class '__main__.B'>, <class '__main__.A'>, <type 'object'>)
 ----
@@ -202,25 +202,25 @@ As noted earlier, this was a simple case with no surprises.
 
 Python makes it easy to look inside objects to see what
 they look like.  For example, to see data defined in an instance,
-we can print out the `$$__dict__$$` attribute of the instance.
+we can print out the +$$__dict__$$+ attribute of the instance.
 [source,python]
 ----
 print("Dict:", b.__dict__)
 ----
 
 Before adding the the call to the base class initializer:
-[source,python]
+
 ----
 Dict: {'bb': 'instance of class B'}
 ----
 
 After:
-[source,python]
+
 ----
 Dict: {'bb': 'instance of class B', 'aa': 'instance of class A'}
 ----
 
-== The `super` method
+== The super Method
 
 All of the above we pretty standard stuff about how Python
 classes work. There can always be surprises when you come from
