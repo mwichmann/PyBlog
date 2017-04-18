@@ -1,0 +1,63 @@
+
+You got me thinking as well, as I don't much care for unittest, at least
+partly because it forces you to use classes even when it doesn't feel
+all that natural.
+
+So here's a vaguely practical example of applying the same pattern using
+pytest - that is, if you're going to test a function several different
+ways, can you use just one function to do the testing.
+
+
+First let's write the function to test: it tries to reverse its argument,
+which should be something that can be iterated over, using fancy list
+slicing.  To show it's working there is also code to try it out if it
+is called as a program (as opposed to a module).
+
+=== reverser.py ==
+def slicerev(collection):
+    return collection[::-1]
+
+if __name__ == "__main__":
+    print slicerev([1,2,3,4])
+    print slicerev((1,2,3,4))
+    print slicerev('abcd')
+===
+
+Now write a test for this function, naming it, by convention,
+test_{funcname}.py. (if it's named this way pytest can find it
+automatically but it's not mandatory, you can give the name of the test
+file as an argument).
+
+Import pytest because we need the definition of the fixture decorator;
+import the function we're going to be testing.
+
+Since what we're factoring here is supplying different sets of data,
+decorate a function which will return the data, turning it into a pytest
+fixture; supply pairs of arguments where one is the data to call the
+function with and the other is the expected result.
+
+The actual test function should be pretty straightforward.
+
+=== test_slicerev.py ===
+import pytest
+
+from reverser import slicerev
+
+@pytest.fixture(params=[
+    ([1,2,3,4], [4,3,2,1]),
+    ((1,2,3,4), (4,3,2,1)),
+    ('abcd',    'edcba')
+    ])
+def slicedata(request):
+    return request.param
+
+def test_slicerev(slicedata):
+    input, expected = slicedata
+    output = slicerev(input)
+    assert output == expected
+===
+
+Run the tests with "py.test test_slicerev.py"
+
+Note the "expected" data for the string type is intentionally incorrect
+so you should see an error with some explanatory output.

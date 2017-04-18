@@ -1,0 +1,96 @@
+= Interfaces in Python?
+
+Why does not Python support "interfaces"?
+Does your Python program actually need "interfaces"?
+Such questions may come from from programmers coming from some of
+the well known Object Oriented languages like Java, C++, C#.
+
+Before we can answer that, what is an interface?
+In the terminology of OO languages,
+an interface provides a contract that if you include an interface
+in an object, you promise to provide
+the functionalities of the interface using the signatures
+in the interface definition.  What's missing
+from that partial definition is the word "implementation".
+In some languages at least, the definition of an interface
+looks similar to the definition of an abstract class, except it
+has no implementation at all.  You cannot instantiate an
+interface, you must inherit from it in a class (or, in the
+C# language at least, a struct) and provide the implementation
+there.
+
+In OO terminology, people who use an interface have neither
+an "is-a" or "has-a" relationship to the interface, but
+rather "implements" relationship. Interfaces have something in
+common with abstract base classes in that the latter also cannot be
+instantiated, but different in that with an abc the relationship
+is "is-a", and the abc may implement some functionality.
+
+So why would a programmer want to use a definition
+that has no implementation?  In static languages, it provides
+instructions to the language compiler that if a class
+inherits from an interface, it MUST implement all of the
+functionalities of the interface (the list of functionality
+types may vary by
+language, in C# it is Methods, Properties, Indexers, Events),
+or the compiler will fail the build, telling you as the developer
+that you missed something you needed to implement.  So that is where part
+of the "contract" concept comes in.  The other part is at the
+consumer level: people using your class know, if they've
+read the interface definition, that the signatures for
+everything in that definition will be available to them in
+your class which uses the interface.
+
+Interfaces allow for a kind
+of plugin or mixin capability - you can have a common element
+that does not belong in a base class, yet make sure there is
+a consistent API across the derived classes that
+use it.  It's a bit of a hokey example, but let's say
+you have a base class Vehicle.  Some kinds - several, but
+not all - of subclasses of Vehicle have a Radio, and you'd 
+like the behavior of the Radio element to work the same in those.
+But you don't want to put that in the Vehicle base class
+definition, because it's not applicable to every subclass, and
+introspection would show those elements were present and thus
+could be called.
+
+But... here's the deal with interfaces.  They feel like a hack.
+A lot of languages - certainly the three mentioned above -
+don't support multiple inheritance. They let you inherit
+from one base class, plus from interfaces.  So you can
+add a set of signatures from an interface to those from a base 
+class.  But what you really want
+is if there's a common element that can be shared, you
+share the implementation, not just the signatures - at
+least as long as they are the same. If one is different, just override. 
+With the interface concept, if you have several subclasses 
+using the Radio interface, each have to duplicate the implementation.
+
+Python doesn't have a language element specifically for interfaces, but it
+does have multiple inheritance, so you can really "mix in" functionality.
+Since this is a blog, I get to be opinioniated: Python does this
+the right way, without having to resort to the somewhat
+artificial interface concept to help mix in components.
+
+
+Admittedly, this is only one side of the equation.
+
+
+
+
+____
+If you're writing a library or a script, all someone needs to know is
+how to use it. They're going to be calling your code; you don't call
+theirs. They aren't modifying or extending your code, and if they do,
+they're on their own. So if they break it, screw 'em. They really don't
+need the formality of interfaces.
+
+But, if you're creating a framework, the situation is different. A
+framework is a library that calls the framework user's code. Now, somebody
+will be writing code that -- in effect -- is part of your library, and
+they need to know things about how their code will be called. With a
+library, it's okay if the author or maintainers are the only ones who
+know the internal dependencies of their code. But with a framework,
+the users are effectively co-authors and co-maintainers. They need more
+concrete information.
+____
