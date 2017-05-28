@@ -20,29 +20,33 @@ blankapp = '''
 '''
 
 # get variables from environment, defaulting if not set
-UPDATES_SOURCE = os.getenv('UPDATES_SOURCE', 'https://raw.github.com/mwichmann/PyBlog/master/updater.d/update-log.yml')
-UPDATES_CACHE = os.getenv('UPDATES_CACHE', os.path.expanduser('~' + '/.version_cache.yml'))
+UPDATES_SOURCE = os.getenv(
+    'UPDATES_SOURCE',
+    'https://raw.github.com/mwichmann/PyBlog/master/updater.d/update-log.yml')
+UPDATES_CACHE = os.getenv('UPDATES_CACHE',
+                          os.path.expanduser('~' + '/.version_cache.yml'))
 
 if os.getenv('UPDATES_DEBUG', '0') == '1':
     DEBUG = True
 else:
     DEBUG = False
 
+
 def update_check(app, version):
     cache_file_loaded = False
     # load previous check results from cache
     if os.path.isfile(UPDATES_CACHE):
-        if DEBUG: 
+        if DEBUG:
             print "found cache file"
         with open(UPDATES_CACHE, 'r') as f:
             cache = yaml.safe_load(f)
             if cache:
                 cache_file_loaded = True
             else:
-                if DEBUG: 
+                if DEBUG:
                     print "cache file contents invalid, forcing update check"
     else:
-        if DEBUG: 
+        if DEBUG:
             print "no cache file found, forcing update check"
 
     # select the entry for "app", or default if not found
@@ -68,7 +72,8 @@ def update_check(app, version):
 
     # check for version change
     if previous_check['version'] != current_yaml[app]['version']:
-        output = "version change detected: %s -> %s" % (previous_check['version'], current_yaml[app]['version'])
+        output = "version change detected: %s -> %s" % (
+            previous_check['version'], current_yaml[app]['version'])
         if DEBUG:
             print output
         return True
@@ -77,6 +82,7 @@ def update_check(app, version):
         if DEBUG:
             print output
         return False
+
 
 if __name__ == "__main__":
     testversion = "0.0"
