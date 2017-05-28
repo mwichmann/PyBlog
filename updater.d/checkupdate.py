@@ -68,13 +68,14 @@ def update_check(app, version):
 
     # check for version change
     if previous_check['version'] != current_yaml[app]['version']:
-        output = "version change detected: {} -> {}".format(previous_check['version'], current_yaml[app]['version'])
-        return True
+        output = "version change detected: %s -> %s" % (previous_check['version'], current_yaml[app]['version'])
         if DEBUG:
             print output
+        return True
     else:
+        output = "latest version has not changed (is: %s)" % current_yaml[app]['version']
         if DEBUG:
-            print "latest version has not changed (is: {})".format(current_yaml[app]['version'])
+            print output
         return False
 
 if __name__ == "__main__":
