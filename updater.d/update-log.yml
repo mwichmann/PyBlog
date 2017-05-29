@@ -1,6 +1,6 @@
 test:
   name: test
-  releasedate: ''
+  releasedate: 'May 29 2017'
   sha256: ''
-  url: ''
-  version: '1.0'
+  url: 'https://raw.github.com/mwichmann/PyBlog/master/updater.d/checkupdate.py'
+  version: '0.2'

@@ -10,6 +10,7 @@ import re
 import os
 import sys
 
+# this is a template entry, used if we have no previous information
 blankapp = '''
     %s:
         url: ''
@@ -20,67 +21,108 @@ blankapp = '''
 '''
 
 # get variables from environment, defaulting if not set
-UPDATES_SOURCE = os.getenv(
-    'UPDATES_SOURCE',
-    'https://raw.github.com/mwichmann/PyBlog/master/updater.d/update-log.yml')
-UPDATES_CACHE = os.getenv('UPDATES_CACHE',
-                          os.path.expanduser('~' + '/.version_cache.yml'))
+DEFAULT_UPDATE_SOURCE = 'https://raw.github.com/mwichmann/PyBlog/master/updater.d/update-log.yml'
+DEFAULT_UPDATE_CACHE = os.path.expanduser('~' + '/.version_cache.yml')
+UPDATE_SOURCE = os.getenv('UPDATE_SOURCE', DEFAULT_UPDATE_SOURCE)
+UPDATE_CACHE = os.getenv('UPDATE_CACHE', DEFAULT_UPDATE_CACHE)
 
-if os.getenv('UPDATES_DEBUG', '0') == '1':
-    DEBUG = True
-else:
-    DEBUG = False
+#if os.getenv('UPDATE_DEBUG', '0') == '1':
+#    DEBUG = True
+#else:
+#    DEBUG = False
+DEBUG=True
 
 
-def update_check(app, version):
-    cache_file_loaded = False
+def _yaml_from_cache():
+    '''load a previous update check from cache'''
     # load previous check results from cache
-    if os.path.isfile(UPDATES_CACHE):
+    cache = None
+    if os.path.isfile(UPDATE_CACHE):
         if DEBUG:
-            print "found cache file"
-        with open(UPDATES_CACHE, 'r') as f:
+            print "reading cache file %s" % UPDATE_CACHE
+        with open(UPDATE_CACHE, 'r') as f:
             cache = yaml.safe_load(f)
-            if cache:
-                cache_file_loaded = True
-            else:
-                if DEBUG:
-                    print "cache file contents invalid, forcing update check"
-    else:
-        if DEBUG:
-            print "no cache file found, forcing update check"
+        if not cache:
+            if DEBUG:
+                print "cache file contents invalid, skipping"
 
-    # select the entry for "app", or default if not found
-    if not cache_file_loaded or not cache[app]:
-        previous_check = yaml.safe_load(blankapp % (app, version, app))
-    else:
-        previous_check = cache[app]
+    return cache
 
-    # get current version details from update source
-    r = requests.get(UPDATES_SOURCE)
+
+def _yaml_from_current(app):
+    '''get current version details from update source
+
+    We assume get + load yaml will leave None if something went wrong
+    'app' argument is use to validate that the fetched data actually
+    is usable. 
+    If the function returns, we are good to proceed.
+    '''
+    r = requests.get(UPDATE_SOURCE)
     current_yaml = yaml.safe_load(r.text)
     if not current_yaml:
         print "Fatal: there is no valid data in the updates source"
+        print "check %s is the correct path" % UPDATE_SOURCE
         os.exit(1)
 
     if not current_yaml[app]:
         print "Fatal: there is no entry in the updates source for", app
+        print "check validity of %s" % UPDATE_SOURCE
         os.exit(1)
 
+    return current_yaml
+
+
+def _yaml_print_entry(yml):
+    '''print an app entry (for debugging purposes'''
+    yaml.dump(yml)
+
+def update_check(app, version=None):
+    '''check if 'app' needs updating.
+
+    Cached version is compared against entry in an upstream database.
+    If 'version' is supplied, compare that against the upstream version.
+    '''
+    cache = _yaml_from_cache()
+
+    # select the previous entry for "app", or build a default if not found
+    if not cache or not cache[app]:
+        if DEBUG:
+            print "using default app template, no cache entry"
+        if not version:
+            version = '0.0'
+        #previous = yaml.safe_load(blankapp % (app, version, app))
+        cache = yaml.safe_load(blankapp % (app, version, app))
+    previous = cache[app]
+    if version:
+        previous['version'] = version
+    if DEBUG:
+        #print yaml.dump(cache)
+        print yaml.dump(previous)
+
+    # get current version details from update source
+    current = _yaml_from_current(app)
+    if DEBUG:
+        #print yaml.dump(current)
+        print yaml.dump(current[app])
+
     # save current version to cache
-    with open(UPDATES_CACHE, 'w') as f:
-        f.write(yaml.dump(current_yaml, default_flow_style=False))
+    # TODO: we really only want to merge in current entry for 'app',
+    # else cache could indicate a different app had been updated
+    # when no check has beeen made. Currently, cheap way: just dump
+    # the whole current yaml out to the cache.
+    with open(UPDATE_CACHE, 'w') as f:
+        f.write(yaml.dump(current, default_flow_style=False))
 
     # check for version change
-    if previous_check['version'] != current_yaml[app]['version']:
-        output = "version change detected: %s -> %s" % (
-            previous_check['version'], current_yaml[app]['version'])
+    oldvers = previous['version']
+    newvers = current[app]['version']
+    if oldvers != newvers:
         if DEBUG:
-            print output
+            print "version change detected: %s -> %s" % (oldvers, newvers)
         return True
     else:
-        output = "latest version has not changed (is: %s)" % current_yaml[app]['version']
         if DEBUG:
-            print output
+            print "version has not changed (is: %s)" % oldvers
         return False
 
 
