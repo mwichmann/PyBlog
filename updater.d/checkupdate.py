@@ -1,14 +1,15 @@
+#!/usr/bin/python
 ''' checkupdate: check if a given script has been updated
 
 Retrieves a yaml-format update file and compares the entry for
 the given script name with a cached one
 '''
 
-import requests
-import yaml
-import re
 import os
-import sys
+import yaml
+import requests
+
+from distutils.version import StrictVersion
 
 # get variables from environment, defaulting if not set
 DEFAULT_UPDATE_SOURCE = 'https://raw.github.com/mwichmann/PyBlog/master/updater.d/update-log.yml'
@@ -29,8 +30,8 @@ def _yaml_from_cache():
     if os.path.isfile(UPDATE_CACHE):
         if DEBUG:
             print "reading cache file %s" % UPDATE_CACHE
-        with open(UPDATE_CACHE, 'r') as f:
-            cache = yaml.safe_load(f)
+        with open(UPDATE_CACHE, 'r') as cachefile:
+            cache = yaml.safe_load(cachefile)
         if not cache:
             if DEBUG:
                 print "cache file contents invalid, skipping"
@@ -45,17 +46,17 @@ def _yaml_from_current(app):
     'app' argument used to validate that there is usable data
     If the function returns, we are good to proceed.
     '''
-    r = requests.get(UPDATE_SOURCE)
-    current_yaml = yaml.safe_load(r.text)
+    reqdata = requests.get(UPDATE_SOURCE)
+    current_yaml = yaml.safe_load(reqdata.text)
     if not current_yaml:
         print "Fatal: there is no valid data in the updates source"
         print "check %s is the correct path" % UPDATE_SOURCE
-        os.exit(1)
+        exit(1)
 
     if not current_yaml[app]:
         print "Fatal: there is no entry in the updates source for", app
         print "check validity of %s" % UPDATE_SOURCE
-        os.exit(1)
+        exit(1)
 
     return current_yaml
 
@@ -93,27 +94,26 @@ def update_check(app, version=None, cacheupdate=True):
     # save current info for this app to cache
     if cacheupdate:
         cache[app] = current[app]
-        with open(UPDATE_CACHE, 'w') as f:
-            f.write(yaml.dump(cache, default_flow_style=False))
+        with open(UPDATE_CACHE, 'w') as cachefile:
+            cachefile.write(yaml.dump(cache, default_flow_style=False))
 
-    # check for version change
-    # TODO: "not equal" is not the best test, pull in version-compare code
     oldvers = previous['version']
     newvers = current[app]['version']
-    if oldvers != newvers:
+    if StrictVersion(newvers) > StrictVersion(oldvers):
         if DEBUG:
-            print "version change detected: %s -> %s" % (oldvers, newvers)
+            print "version change detected (%s -> %s)" % (oldvers, newvers)
         return current[app]['url']
     else:
         if DEBUG:
-            print "version has not changed (is: %s)" % oldvers
+            print "version has not changed (current %s)" % oldvers
         return None
 
 
 if __name__ == "__main__":
     # For testing, use these:
-    testversion = "0.0"
-    UPDATE_CACHE = ".testcache.yml"
+    TESTAPP = 'test'
+    TESTVERSION = '0.0'
+    UPDATE_CACHE = '.testcache.yml'
     DEBUG = True
 
     # TODO test cases: some combinations of
@@ -133,14 +133,15 @@ if __name__ == "__main__":
     # check against new data without entry for app
     # check against new data with app version lower than supplied
 
-    print "checking update vs cache version, do not update cache"
-    if update_check("test", cacheupdate=False):
-        print "checkupdate: test: update needed"
+    print "Running checkupdate self-tests..."
+    print "TEST: checking update vs cache version, do not update cache"
+    if update_check(TESTAPP, cacheupdate=False):
+        print "TEST: %s: update needed" % TESTAPP
     else:
-        print "checkupdate: test: update not needed"
+        print "TEST: %s: update not needed" % TESTAPP
 
-    print "checking update vs v0.0, update cache"
-    if update_check("test", testversion, cacheupdate=True):
-        print "checkupdate: test: update needed"
+    print "TEST: checking update vs v0.0, update cache"
+    if update_check(TESTAPP, TESTVERSION, cacheupdate=True):
+        print "TEST: %s: update needed" % TESTAPP
     else:
-        print "checkupdate: test: update not needed"
+        print "TEST: %s: update not needed" % TESTAPP
