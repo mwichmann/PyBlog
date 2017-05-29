@@ -10,16 +10,6 @@ import re
 import os
 import sys
 
-# this is a template entry, used if we have no previous information
-blankapp = '''
-    %s:
-        url: ''
-        sha256: ''
-        releasedate: ''
-        version: '%s'
-        name: '%s'
-'''
-
 # get variables from environment, defaulting if not set
 DEFAULT_UPDATE_SOURCE = 'https://raw.github.com/mwichmann/PyBlog/master/updater.d/update-log.yml'
 DEFAULT_UPDATE_CACHE = os.path.expanduser('~' + '/.version_cache.yml')
@@ -70,10 +60,6 @@ def _yaml_from_current(app):
     return current_yaml
 
 
-def _yaml_print_entry(yml):
-    '''print an app entry (for debugging purposes'''
-    yaml.dump(yml)
-
 def update_check(app, version=None, cacheupdate=True):
     '''check if 'app' needs updating.
 
@@ -88,19 +74,21 @@ def update_check(app, version=None, cacheupdate=True):
             cache = {}
         if DEBUG:
             print "no cached entry for %s found, building default" % app
-        tmpcache = yaml.safe_load(blankapp % (app, '1.0', app))
-        cache[app] = tmpcache[app]
+        entry = {
+            'name': app,
+            'sha256': '',
+            'releasedate': '',
+            'version': '0.0',
+            'url': ''
+        }
+        cache[app] = entry
 
     previous = cache[app]
     if version:
         previous['version'] = version
-    if DEBUG:
-        print "Cache...", yaml.dump(previous, default_flow_style=False)
 
     # get current version details from update source
     current = _yaml_from_current(app)
-    if DEBUG:
-        print "From web...", yaml.dump(current[app], default_flow_style=False)
 
     # save current info for this app to cache
     if cacheupdate:
@@ -126,7 +114,7 @@ if __name__ == "__main__":
     # For testing, use these:
     testversion = "0.0"
     UPDATE_CACHE = ".testcache.yml"
-    DEBUG=True
+    DEBUG = True
 
     # TODO test cases: some combinations of
     # add dummy "upstream"
@@ -140,7 +128,7 @@ if __name__ == "__main__":
     #   1. if write flag, is cache updated?
     # check against cache with out of date entry for app and other data
     #   1. if write flag, is cache updated preserving other data?
-    # check using supplied version 
+    # check using supplied version
     #   1. is supplied version used instead of cached?
     # check against new data without entry for app
     # check against new data with app version lower than supplied
