@@ -26,11 +26,10 @@ DEFAULT_UPDATE_CACHE = os.path.expanduser('~' + '/.version_cache.yml')
 UPDATE_SOURCE = os.getenv('UPDATE_SOURCE', DEFAULT_UPDATE_SOURCE)
 UPDATE_CACHE = os.getenv('UPDATE_CACHE', DEFAULT_UPDATE_CACHE)
 
-#if os.getenv('UPDATE_DEBUG', '0') == '1':
-#    DEBUG = True
-#else:
-#    DEBUG = False
-DEBUG=True
+if os.getenv('UPDATE_DEBUG', '0') == '1':
+    DEBUG = True
+else:
+    DEBUG = False
 
 
 def _yaml_from_cache():
@@ -53,8 +52,7 @@ def _yaml_from_current(app):
     '''get current version details from update source
 
     We assume get + load yaml will leave None if something went wrong
-    'app' argument is use to validate that the fetched data actually
-    is usable. 
+    'app' argument used to validate that there is usable data
     If the function returns, we are good to proceed.
     '''
     r = requests.get(UPDATE_SOURCE)
@@ -76,7 +74,7 @@ def _yaml_print_entry(yml):
     '''print an app entry (for debugging purposes'''
     yaml.dump(yml)
 
-def update_check(app, version=None):
+def update_check(app, version=None, cacheupdate=True):
     '''check if 'app' needs updating.
 
     Cached version is compared against entry in an upstream database.
@@ -84,51 +82,77 @@ def update_check(app, version=None):
     '''
     cache = _yaml_from_cache()
 
-    # select the previous entry for "app", or build a default if not found
-    if not cache or not cache[app]:
+    # Build a default if no usable cache data found
+    if not cache or not cache.has_key(app):
+        if not cache:
+            cache = {}
         if DEBUG:
-            print "using default app template, no cache entry"
-        if not version:
-            version = '0.0'
-        #previous = yaml.safe_load(blankapp % (app, version, app))
-        cache = yaml.safe_load(blankapp % (app, version, app))
+            print "no cached entry for %s found, building default" % app
+        tmpcache = yaml.safe_load(blankapp % (app, '1.0', app))
+        cache[app] = tmpcache[app]
+
     previous = cache[app]
     if version:
         previous['version'] = version
     if DEBUG:
-        #print yaml.dump(cache)
-        print yaml.dump(previous)
+        print "Cache...", yaml.dump(previous, default_flow_style=False)
 
     # get current version details from update source
     current = _yaml_from_current(app)
     if DEBUG:
-        #print yaml.dump(current)
-        print yaml.dump(current[app])
+        print "From web...", yaml.dump(current[app], default_flow_style=False)
 
-    # save current version to cache
-    # TODO: we really only want to merge in current entry for 'app',
-    # else cache could indicate a different app had been updated
-    # when no check has beeen made. Currently, cheap way: just dump
-    # the whole current yaml out to the cache.
-    with open(UPDATE_CACHE, 'w') as f:
-        f.write(yaml.dump(current, default_flow_style=False))
+    # save current info for this app to cache
+    if cacheupdate:
+        cache[app] = current[app]
+        with open(UPDATE_CACHE, 'w') as f:
+            f.write(yaml.dump(cache, default_flow_style=False))
 
     # check for version change
+    # TODO: "not equal" is not the best test, pull in version-compare code
     oldvers = previous['version']
     newvers = current[app]['version']
     if oldvers != newvers:
         if DEBUG:
             print "version change detected: %s -> %s" % (oldvers, newvers)
-        return True
+        return current[app]['url']
     else:
         if DEBUG:
             print "version has not changed (is: %s)" % oldvers
-        return False
+        return None
 
 
 if __name__ == "__main__":
+    # For testing, use these:
     testversion = "0.0"
-    if update_check("test", testversion):
+    UPDATE_CACHE = ".testcache.yml"
+    DEBUG=True
+
+    # TODO test cases: some combinations of
+    # add dummy "upstream"
+    # check against no cache
+    #   1. correctly fall back to defaults?
+    #   2. if write flag supplied, is cache created?
+    # check against cache with data but without entry for app
+    #   1. correctly fall back to defaults?
+    #   2. if write flag, is cache updated preserving other data?
+    # check against cache with out of date entry for app (only)
+    #   1. if write flag, is cache updated?
+    # check against cache with out of date entry for app and other data
+    #   1. if write flag, is cache updated preserving other data?
+    # check using supplied version 
+    #   1. is supplied version used instead of cached?
+    # check against new data without entry for app
+    # check against new data with app version lower than supplied
+
+    print "checking update vs cache version, do not update cache"
+    if update_check("test", cacheupdate=False):
+        print "checkupdate: test: update needed"
+    else:
+        print "checkupdate: test: update not needed"
+
+    print "checking update vs v0.0, update cache"
+    if update_check("test", testversion, cacheupdate=True):
         print "checkupdate: test: update needed"
     else:
         print "checkupdate: test: update not needed"
