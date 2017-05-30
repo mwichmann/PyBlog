@@ -75,6 +75,8 @@ def test_cache(clean_cache, write_cache):
 # check using supplied version argument
 # - is supplied version used instead of cached?
 # validate if updated cache is correct
+# check with filename known not to be in update source
+# check with invalid update source
 
 # Notes on cleanup
 '''
