@@ -1,6 +1,13 @@
+checkupdate:
+  name: checkupdate
+  releasedate: 'May 29 2017'
+  sha256: 'f7e5f8086732055531efa11fed94a74e8e9eca8c775ce68757bfc0b64bbf9fcd'
+  url: 'https://raw.github.com/mwichmann/PyBlog/master/updater.d/checkupdate.py'
+  version: '0.2'
+  
 test:
   name: test
   releasedate: 'May 29 2017'
   sha256: ''
-  url: 'https://raw.github.com/mwichmann/PyBlog/master/updater.d/checkupdate.py'
+  url: 'file://dummy.py'
   version: '0.2'

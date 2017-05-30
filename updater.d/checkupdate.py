@@ -5,22 +5,30 @@ Retrieves a yaml-format update file and compares the entry for
 the given script name with a cached one
 '''
 
+__all__ = ["update_check"]
+
 import os
 import yaml
 import requests
-
 from distutils.version import StrictVersion
 
-# get variables from environment, defaulting if not set
+PROGRAMNAME = 'checkupdate'
+PROGRAMVERSION = '0.3'
 DEFAULT_UPDATE_SOURCE = 'https://raw.github.com/mwichmann/PyBlog/master/updater.d/update-log.yml'
 DEFAULT_UPDATE_CACHE = os.path.expanduser('~' + '/.version_cache.yml')
-UPDATE_SOURCE = os.getenv('UPDATE_SOURCE', DEFAULT_UPDATE_SOURCE)
-UPDATE_CACHE = os.getenv('UPDATE_CACHE', DEFAULT_UPDATE_CACHE)
 
-if os.getenv('UPDATE_DEBUG', '0') == '1':
-    DEBUG = True
-else:
-    DEBUG = False
+
+def _setup_environ():
+    global UPDATE_SOURCE, UPDATE_CACHE, DEBUG
+
+    # get variables from environment, defaulting if not set
+    UPDATE_SOURCE = os.getenv('UPDATE_SOURCE', DEFAULT_UPDATE_SOURCE)
+    UPDATE_CACHE = os.getenv('UPDATE_CACHE', DEFAULT_UPDATE_CACHE)
+
+    if os.getenv('UPDATE_DEBUG', '0') == '1':
+        DEBUG = True
+    else:
+        DEBUG = False
 
 
 def _yaml_from_cache():
@@ -28,13 +36,13 @@ def _yaml_from_cache():
     # load previous check results from cache
     cache = None
     if os.path.isfile(UPDATE_CACHE):
-        if DEBUG:
-            print "reading cache file %s" % UPDATE_CACHE
         with open(UPDATE_CACHE, 'r') as cachefile:
             cache = yaml.safe_load(cachefile)
-        if not cache:
             if DEBUG:
-                print "cache file contents invalid, skipping"
+                if cache:
+                    print "read cache file %s" % UPDATE_CACHE
+                else:
+                    print "cache file contents invalid, skipping"
 
     return cache
 
@@ -46,14 +54,20 @@ def _yaml_from_current(app):
     'app' argument used to validate that there is usable data
     If the function returns, we are good to proceed.
     '''
-    reqdata = requests.get(UPDATE_SOURCE)
-    current_yaml = yaml.safe_load(reqdata.text)
+    # requests cannot handile file://, so fudge it
+    if UPDATE_SOURCE.startswith('file://'):
+        fname = UPDATE_SOURCE.split('file://')[1]
+        with open(fname, 'r') as updatefile:
+            current_yaml = yaml.safe_load(updatefile)
+    else:
+        reqdata = requests.get(UPDATE_SOURCE)
+        current_yaml = yaml.safe_load(reqdata.text)
     if not current_yaml:
         print "Fatal: there is no valid data in the updates source"
         print "check %s is the correct path" % UPDATE_SOURCE
         exit(1)
 
-    if not current_yaml[app]:
+    if not current_yaml.has_key(app):
         print "Fatal: there is no entry in the updates source for", app
         print "check validity of %s" % UPDATE_SOURCE
         exit(1)
@@ -67,6 +81,7 @@ def update_check(app, version=None, cacheupdate=True):
     Cached version is compared against entry in an upstream database.
     If 'version' is supplied, compare that against the upstream version.
     '''
+    _setup_environ()
     cache = _yaml_from_cache()
 
     # Build a default if no usable cache data found
@@ -110,38 +125,6 @@ def update_check(app, version=None, cacheupdate=True):
 
 
 if __name__ == "__main__":
-    # For testing, use these:
-    TESTAPP = 'test'
-    TESTVERSION = '0.0'
-    UPDATE_CACHE = '.testcache.yml'
-    DEBUG = True
-
-    # TODO test cases: some combinations of
-    # add dummy "upstream"
-    # check against no cache
-    #   1. correctly fall back to defaults?
-    #   2. if write flag supplied, is cache created?
-    # check against cache with data but without entry for app
-    #   1. correctly fall back to defaults?
-    #   2. if write flag, is cache updated preserving other data?
-    # check against cache with out of date entry for app (only)
-    #   1. if write flag, is cache updated?
-    # check against cache with out of date entry for app and other data
-    #   1. if write flag, is cache updated preserving other data?
-    # check using supplied version
-    #   1. is supplied version used instead of cached?
-    # check against new data without entry for app
-    # check against new data with app version lower than supplied
-
-    print "Running checkupdate self-tests..."
-    print "TEST: checking update vs cache version, do not update cache"
-    if update_check(TESTAPP, cacheupdate=False):
-        print "TEST: %s: update needed" % TESTAPP
-    else:
-        print "TEST: %s: update not needed" % TESTAPP
-
-    print "TEST: checking update vs v0.0, update cache"
-    if update_check(TESTAPP, TESTVERSION, cacheupdate=True):
-        print "TEST: %s: update needed" % TESTAPP
-    else:
-        print "TEST: %s: update not needed" % TESTAPP
+    # if not called as a module, check ourselves
+    rv = update_check(PROGRAMNAME, PROGRAMVERSION, cacheupdate=False)
+    print PROGRAMNAME, rv
