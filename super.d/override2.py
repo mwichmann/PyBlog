@@ -25,19 +25,19 @@ print("B.aa_cls:", B.aa_cls)
 
 print("Instantiating A as a:")
 a = A()
+print("Instantiating B as b:")
+b = B()
+
 print("Data from instance a:")
 print("a.aa_cls:", a.aa_cls)
 print("a.aa:", a.aa)
 print("call ameth directly from a:", a.ameth())
+print("Dict a:", a.__dict__)
 
-print("Instantiating B as b:")
-b = B()
 print("Data from instance b:")
 print("b.bb_cls:", b.bb_cls)
 print("b.bb:", b.bb)
 print("b.aa_cls:", b.aa_cls)
 print("call ameth from b:", b.ameth())
 print("b.aa:", b.aa)
-
 print("Dict b:", b.__dict__)
-print("dir b:", dir(b))
