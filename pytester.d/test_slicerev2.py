@@ -10,4 +10,4 @@ def test_slicerev_tuple():
 
 def test_slicerev_string():
     output = slicerev('abcd')
-    assert output == 'edcba'
+    assert output == 'dcba'
