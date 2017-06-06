@@ -1,0 +1,290 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Python Test Driven Development Basics with PyTest</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="python-test-driven-development-basics-with-pytest">
+<h1>Python Test Driven Development Basics with PyTest<a class="headerlink" href="#python-test-driven-development-basics-with-pytest" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline"></a></h2>
+<p>Not long ago I was chatting with someone about some code he was working
+on that did something some might consider 'obscure';, and how to be sure
+it worked correctly.  You can of course put in print statements to trace
+what is going on, then remove them later, but this also sounds like
+a case for writing a test that confirms the behavior, then coding up
+the function, mkaing adjustments until the test passes.  This roughly,
+is what is called test-driven development (TDD).</p>
+<p>When we chatted about how to do that, the person said they had trouble
+working with the Python unittest module, and I pointed out I don't
+much care for it either.  One reason is because it forces you to use
+classes even when it may not feel all that natural to write a class for
+a particular problem. I wrote up some notes for him on using PyTest,
+and then dedicded to modify those for somewhat wider sharing.</p>
+<p>So here's a vaguely practical example of applying the pattern that
+led to our discussion, that is how to effectively run a test function
+several different ways, rather than writing up a function for each
+permutation of your test.</p>
+<p>First, and immediately violating the principles of TDD which say to
+write the test first, let's write the function to test.  Our candidate
+function tries to return the reverse of its argument, to keep it simple,
+we will assume the argument is something that can be iterated over,
+so we can use fancy list slicing (thus we can't reverse a dictionary -
+but that has no meaning anyway since a dictionary has no order).  To show
+it's working there is also code to try it out if it is called as a program
+(as opposed to a module). This is the way people used to write tests for
+a Python module, before test harnesses became widely used: just code up
+a few checks and stuff them in the "main" part.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">slicerev</span><span class="p">(</span><span class="n">collection</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">collection</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="nb">print</span> <span class="n">slicerev</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+    <span class="nb">print</span> <span class="n">slicerev</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+    <span class="nb">print</span> <span class="n">slicerev</span><span class="p">(</span><span class="s1">&#39;abcd&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If we run that, we see that all of list, tuple and string did indeed
+get reversed as we expected:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">dcba</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-pytest">
+<h2>Using PyTest<a class="headerlink" href="#using-pytest" title="Permalink to this headline">¶</a></h2>
+<p>Let's take this basic test code and turn it into a separate test using
+PyTest.  Unit tests for a particular function are often named (this is
+convention) test_{funcname}.py. If it's named this way pytest can find
+it automatically - runing py.test without arguments lets it hunt for
+files that begin with 'test'.  It's not mandatory to use this naming,
+you can give the name of the test file as an argument, or use other
+methods to describe exactly where the tests should be picked up from.</p>
+<p>The code can be really simple since this is a contrived example - we're
+not really systematically "unit testing", we're spot checking.  All we
+have to do is import the function we are going to test (even this is
+not needed if the test is in the same file as the code being tested,
+as opposed to a separate file), and then write out our three tests cases,
+which do nothing but call the function with a known argument, then
+compare the return with what we expect the result to be.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">reverser</span> <span class="k">import</span> <span class="n">slicerev</span>
+
+<span class="k">def</span> <span class="nf">test_slicerev_list</span><span class="p">():</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">slicerev</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+    <span class="k">assert</span> <span class="n">output</span> <span class="o">==</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">test_slicerev_tuple</span><span class="p">():</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">slicerev</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">output</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">test_slicerev_string</span><span class="p">():</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">slicerev</span><span class="p">(</span><span class="s1">&#39;abcd&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">output</span> <span class="o">==</span> <span class="s1">&#39;edcba&#39;</span>
+</pre></div>
+</div>
+<p>That's really all there is to it.</p>
+<p>To make things a little more interesting, I have introduced an error in
+the test itself: the function checking the reversed string claims it
+expects 'edcba' instead of 'dcba'. This is done to show what it looks
+like when PyTest reports a failure.</p>
+<p>Let's run it:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ py.test test_slicerev.py
+============================= test session starts ==============================
+platform linux2 -- Python 2.7.13, pytest-2.9.2, py-1.4.33, pluggy-0.3.1
+rootdir: /home/mats/PyBlog/pytester.d, inifile:
+collected 3 items
+
+test_slicerev.py ..F
+
+=================================== FAILURES ===================================
+_____________________________ test_slicerev_string _____________________________
+
+    def test_slicerev_string():
+        output = slicerev(&#39;abcd&#39;)
+&gt;       assert output == &#39;edcba&#39;
+E       assert &#39;dcba&#39; == &#39;edcba&#39;
+E         - dcba
+E         + edcba
+E         ? +
+
+test_slicerev.py:13: AssertionError
+====================== 1 failed, 2 passed in 0.01 seconds ======================
+</pre></div>
+</div>
+<p>A run with that problem fixed is considerably quieter:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ py.test test_slicerev.py
+============================= test session starts ==============================
+platform linux2 -- Python 2.7.13, pytest-2.9.2, py-1.4.33, pluggy-0.3.1
+rootdir: /home/mats/PyBlog/pytester.d, inifile:
+collected 3 items
+
+test_slicerev.py ...
+
+=========================== 3 passed in 0.00 seconds ==========================
+</pre></div>
+</div>
+</div>
+<div class="section" id="pytest-fixtures">
+<h2>PyTest Fixtures<a class="headerlink" href="#pytest-fixtures" title="Permalink to this headline">¶</a></h2>
+<p>If you think about this for a bit, you notice that the same code is
+run three times, only the data in the three test functions differs.
+As mentioned above, this is a very common situation in testing, where
+you want to try different cases to see how a unit behaves - test the
+boundary conditions, test invalid data or data types, etc.</p>
+<p>PyTest provides a mechanism called a "fixture" - a fixed baseline that
+can be executed repeatedly, which helps with this situation.</p>
+<p>In the first iteration of our tests, we did not need to import "pytest"
+for it to work when the test is run by PyTest - PyTest wraps the code and
+the code itself never uses anything from PyTest. However, in our second
+iteration, we do want something from PyTest namespace - the definition
+of the decorator we need to turn something into a PyTest fixture, so
+the import is needed.</p>
+<p>Since what we're factoring here is supplying different sets of data, the
+fixture function 'slicedata' itself is extremely simple: all it does is
+return the data.  The test function has the same two functional statements
+that each of the test functions had before - call the function under test,
+then use an assertion to check the result was as expected.  In addition
+to that, the takes the fixture function as an argument, which would not
+make much sense by itself, but once it is turned into a fixture it does.</p>
+<p>We use a decorator to turn 'slicedata' into a fixture - remember Python
+decorators are a piece of special syntax that helps alter the behavor
+of a function.  The PyTest fixture decorator can take a "params" parameter,
+which should be something that can be iterated over, the fixture function
+can then receive the data one at a time.  In this case we are going
+to pass a list of tuples, the first element of each tuple being the
+data we are going to apply to the test, the second element being the
+expected value.</p>
+<p>We now know the other change we need to make to the test function:
+the "fixture object" returned by the fixture will be a tuple, so
+we should unpack the tuple into the pieces we want.</p>
+<p>The new code looks like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">from</span> <span class="nn">reverser</span> <span class="k">import</span> <span class="n">slicerev</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="p">[</span>
+    <span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]),</span>
+    <span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;abcd&#39;</span><span class="p">,</span>    <span class="s1">&#39;dcba&#39;</span><span class="p">)</span>
+    <span class="p">])</span>
+<span class="k">def</span> <span class="nf">slicedata</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">param</span>
+
+<span class="k">def</span> <span class="nf">test_slicerev</span><span class="p">(</span><span class="n">slicedata</span><span class="p">):</span>
+    <span class="nb">input</span><span class="p">,</span> <span class="n">expected</span> <span class="o">=</span> <span class="n">slicedata</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">slicerev</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">output</span> <span class="o">==</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>Run these tests and we'll see the results are the same as before:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ py.test test_slicerev_fix.py
+============================= test session starts ==============================
+platform linux2 -- Python 2.7.13, pytest-2.9.2, py-1.4.33, pluggy-0.3.1
+rootdir: /home/mats/PyBlog/pytester.d, inifile:
+collected 3 items
+
+test_slicerev_fix.py ...
+
+=========================== 3 passed in 0.00 seconds ===========================
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Python Test Driven Development Basics with PyTest</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#using-pytest">Using PyTest</a></li>
+<li><a class="reference internal" href="#pytest-fixtures">PyTest Fixtures</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/pytester.d/tdd-pytest.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Mats Wichmann.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/pytester.d/tdd-pytest.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

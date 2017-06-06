@@ -1,0 +1,324 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The Python “with” statement and Context Managers &#8212; Write Better Python 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-python-with-statement-and-context-managers">
+<h1>The Python &#8220;with&#8221; statement and Context Managers<a class="headerlink" href="#the-python-with-statement-and-context-managers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>The Python &#8220;with&#8221; statement helps when you want to refactor code that
+follows a particular pattern, roughly along these lines:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># set things up</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="c1"># do something</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="c1"># tear things down</span>
+</pre></div>
+</div>
+<p>When do you need this sort of code?  When there&#8217;s some resource you
+need access to, but don&#8217;t have to (and should not) hold on to forever.
+The two most common cases, I believe, are file descriptors (open files)
+and thread synchronization (using mutex locks).  A bit of googling would
+turn up lots of articles and forum posts that look like &#8220;Python whatsit
+leaks file descriptors&#8221;, &#8220;Python subprocess runs out of file descriptors&#8221;,
+etc. Managing file descriptor usage can be quite tricky if the opened
+file descriptors are used all over the place; if that situation exists
+perhaps some other refactoring is also in order.  Locks are a little
+simpler, they exist to manipulate something which could have concurrent
+access problems, and programmers know that section should be as short
+as possible, so the usage doesn&#8217;t tend to scatter all over the place,
+but it&#8217;s still easy to get into trouble, as an example below will show.</p>
+<p>Here&#8217;s a simple snippet using a try/finally block to manage file opens,
+this sort of thing, a decade or more ago, was a common idiom for working
+with an external file:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">outfile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">outfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">)</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">outfile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To be pedantic, the file open could fail, for example if the file could
+already exists and not have write permission, so possibly the open should
+also be wrapped in a try block.</p>
+<p>Anyway, if you don&#8217;t make sure a file close happens, and there are lots
+of files to open, you will eventually run out of the system resource
+that is file descriptors.</p>
+<p>Here&#8217;s a snippet using locks:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">threading</span> <span class="k">import</span> <span class="n">Lock</span>
+
+<span class="n">lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+<span class="n">lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">my_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Handling locks carefully is really important.  Here&#8217;s a different (very
+artificial, and probably not too realistic) snippet that shows how to
+get into trouble:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">some_critical_section</span><span class="p">(</span><span class="n">my_list</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+    <span class="n">lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+    <span class="n">my_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s1">&#39;some kind of error here&#39;</span>
+    <span class="n">lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>In other words, &#8220;something happens&#8221; somewhere between the acquire and
+release, and we drop out of the function without the lock ever being
+released.  Future calls to this function will block trying to acquire
+the lock that they&#8217;ll never get. You have to write carefully not to
+get into such deadlock situations, once code complexity rises. Did you
+anticipate the possible error exits, and release the lock in all of them?</p>
+</div>
+<div class="section" id="the-with-statment">
+<h2>The &#8220;with&#8221; statment<a class="headerlink" href="#the-with-statment" title="Permalink to this headline">¶</a></h2>
+<p>Both of the file open and thread lock examples follow the
+pattern shown at the beginning.  In Python 2.5 (as described by
+<a class="reference external" href="https://www.python.org/dev/peps/pep-0343">[PEP 343]</a>), a bit of new syntax
+was introduced to help write things using this pattern more concisely,
+and thus hopefully more clearly. The new keyword &#8220;with&#8221; was introduced,
+and it can take a companion &#8220;as&#8221; clause.  Using &#8220;with&#8221; sets up a context
+that Python keeps track of, wrapping it in appropriate begin/end logic.</p>
+<p>Using it is pretty simple:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">threading</span> <span class="k">import</span> <span class="n">Lock</span>
+
+<span class="n">lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">lock</span><span class="p">:</span>
+    <span class="n">my_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you need a handle to the resource being acquired, which is usually
+the case, you can save that by adding an &#8220;as&#8221; clause, like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
+     <span class="n">outfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The block following the &#8220;with&#8221; statement is the context, and Python
+takes care of wrapping beginning and ending steps around that context.
+The above are the new idioms for dealing with these kinds of resources,
+and probably most people who have learned Python from 2.6 on know these
+(I said earlier &#8220;with&#8221; was introduced in Python 2.5, but there it was
+available only as a &#8220;future&#8221; feature, 2.6 is where it really became
+mainstream) - but perhaps don&#8217;t understand why. The why is a cleaner
+syntax and cleaner concept of what the &#8220;context&#8221; section is.</p>
+</div>
+<div class="section" id="context-managers">
+<h2>Context Managers<a class="headerlink" href="#context-managers" title="Permalink to this headline">¶</a></h2>
+<p>Notice in the &#8220;with&#8221; versions of the examples there appear to be
+details missing: in the lock example, lock.acquire() and lock.release()
+are not mentioned; in the file open example the outfile.close()
+is not present - which leads to the question &#8220;how does Python
+know what to do here?&#8221;.  It turns out that using the &#8220;with&#8221;
+statement requires help from something called a Context Manager,
+which is a class which follows the context management protocol.  The
+<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#typecontextmanager">Python Documentation</a>
+describes how that works.</p>
+<p>The tl;dr version (but do go read the documentation to understand
+more!) is that a context manager provides the methods <code class="docutils literal"><span class="pre">__enter__</span></code> and
+<code class="docutils literal"><span class="pre">__exit__</span></code>, and it is these which do the work mentioned above. The the
+file and thread-lock objects in Python already come as context managers,
+and there are a number more.</p>
+<p>We could write our own example of how to handle file opens (not needed
+since the Python file object is already a context manager) just to show
+what a context manager looks like:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">File</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_file</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="n">File</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
+    <span class="n">outfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="decorated-generators-as-context-managers">
+<h2>Decorated Generators as Context Managers<a class="headerlink" href="#decorated-generators-as-context-managers" title="Permalink to this headline">¶</a></h2>
+<p>We can of course write context managers in the style just shown, but often
+it&#8217;s easier to write a generator function, which we can then decorate
+with syntax that will intsruct Python to turn it into a context manager.
+The decoration is <code class="docutils literal"><span class="pre">&#64;contextlib.contextmanager</span></code> (you can shorten that based
+on the way you import), and what happens is the code before the &#8220;yield&#8221;
+statement is turned into the <code class="docutils literal"><span class="pre">__enter__</span></code> method while the code after it
+is turned into the <code class="docutils literal"><span class="pre">__exit__</span></code> method.</p>
+<p>Let&#8217;s show how this works with a somewhat practical example: timing an
+operation via a context manager. Python already provides a very nice
+timing module (timeit), but using it in the manner of this example (IMHO)
+makes for nice readable code. The &#8220;wrapping&#8221; behavior of the context
+manager doesn&#8217;t have to be limited to critical code sections. Timing
+code fits the model too: the &#8220;setup&#8221; is capturing a timestamp before
+the context block runs; the &#8220;teardown&#8221; is capturing a timestamp after
+it has completed, and then computing the difference (in the example we
+also print out the result).</p>
+<p>Here is a timing context manager in class form, plus some code to do
+something we can time (fetching a URL):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">timeit</span> <span class="k">import</span> <span class="n">default_timer</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+
+<span class="k">class</span> <span class="nc">Timer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">=</span> <span class="n">default_timer</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">elapsed_secs</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">elapsed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">elapsed_secs</span> <span class="o">*</span> <span class="mi">1000</span> <span class="c1"># millisecs</span>
+        <span class="nb">print</span> <span class="s1">&#39;elapsed time: </span><span class="si">%f</span><span class="s1"> ms&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">elapsed</span>
+
+<span class="n">url</span> <span class="o">=</span> <span class="s1">&#39;https://github.com/timeline.json&#39;</span>
+<span class="k">with</span> <span class="n">Timer</span><span class="p">():</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Running this, you might get something like:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">elapsed</span> <span class="n">time</span><span class="p">:</span> <span class="mf">375.089169</span> <span class="n">ms</span>
+</pre></div>
+</div>
+<p>Rewriting it into decorated-generator form:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">timeit</span> <span class="k">import</span> <span class="n">default_timer</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span>
+
+<span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">Timer</span><span class="p">():</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">default_timer</span><span class="p">()</span>
+    <span class="k">yield</span>
+    <span class="n">elapsed_secs</span> <span class="o">=</span> <span class="n">default_timer</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">elapsed_secs</span> <span class="o">*</span> <span class="mi">1000</span> <span class="c1"># millisecs</span>
+    <span class="nb">print</span> <span class="s1">&#39;elapsed time: </span><span class="si">%f</span><span class="s1"> ms&#39;</span> <span class="o">%</span> <span class="n">elapsed</span>
+
+<span class="n">url</span> <span class="o">=</span> <span class="s1">&#39;https://github.com/timeline.json&#39;</span>
+<span class="k">with</span> <span class="n">Timer</span><span class="p">():</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>and this version works the same way as the previous one.</p>
+<p>Context managers have very appealing applications in testing, where
+there may be many test cases that each have lots of setup and teardown.
+It&#8217;s usually important that individual tests are isolated, so that running
+one test does not impact the results of a future test; having a teardown
+phase that runs reliably even if the test case went badly wrong is very
+appealing. Since Python 2.7 (and thus all Python 3 versions), context
+managers are composable - that is you can have combinations of multiple
+setup and teardown steps, which can even feed into each other, like:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">a</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="k">as</span> <span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">(</span><span class="n">A</span><span class="p">)</span> <span class="k">as</span> <span class="n">C</span><span class="p">:</span>
+</pre></div>
+</div>
+<p>Hopefully this post will have shown some of the uses of the &#8220;with&#8221;
+statement.  As always, there are more goodies, only need to do a little
+more digging!</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">The Python &#8220;with&#8221; statement and Context Managers</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#the-with-statment">The &#8220;with&#8221; statment</a></li>
+<li><a class="reference internal" href="#context-managers">Context Managers</a></li>
+<li><a class="reference internal" href="#decorated-generators-as-context-managers">Decorated Generators as Context Managers</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/with.d/with.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Mats Wichmann.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/with.d/with.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
