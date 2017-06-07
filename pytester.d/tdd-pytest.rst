@@ -1,4 +1,4 @@
-#################################################
+
 Python Test Driven Development Basics with PyTest
 #################################################
 
@@ -18,7 +18,7 @@ working with the Python unittest module, and I pointed out I don't
 much care for it either.  One reason is because it forces you to use
 classes even when it may not feel all that natural to write a class for
 a particular problem. I wrote up some notes for him on using PyTest,
-and then dedicded to modify those for somewhat wider sharing.
+and then decided to modify those for somewhat wider sharing.
 
 So here's a vaguely practical example of applying the pattern that
 led to our discussion, that is how to effectively run a test function
@@ -66,7 +66,7 @@ The code can be really simple since this is a contrived example - we're
 not really systematically "unit testing", we're spot checking.  All we
 have to do is import the function we are going to test (even this is
 not needed if the test is in the same file as the code being tested,
-as opposed to a separate file), and then write out our three tests cases,
+as opposed to a separate file), and then write out our three test cases,
 which do nothing but call the function with a known argument, then
 compare the return with what we expect the result to be. ::
 
