@@ -12,7 +12,7 @@ to use the accessor methods.
 == What is a property?
 
 Here's a contrived example, a fragmentary class (in Java, perhaps) describing
-a person, where we've only shown one piece of data, the age of the person:
+a person, showing only one piece of data, the age of the person:
 
 [source,java]
 ----
@@ -27,8 +27,8 @@ public:
 };
 ----
 
-Here the instance variable `age` is private, but we've also
-provided a pair of public methods which give access to the value of age:
+Here the instance variable `age` is private, but there is also
+a pair of public methods which give access to the value of age:
 `getAge` to read it and `setAge` to set it.
 Now if something a lot more complicated needs to happen later to `age`
 the getter/setter methods can be updated but it doesn't affect clients
@@ -36,7 +36,8 @@ using this code.  And some evolution is not not actually an unreasonable
 expectation - the age of a person isn't a good candidate for data that
 looks static, since every year on their birthday it changes.  So perhaps
 someday we'll improve the class by calculating the age from the current 
-date and the person's birth date only when it is needed?
+date and the person's birth date only when it is needed, the birth
+date being a more natural candidate for "static" data.
 
 A lot of developers don't like this kind of code; it does accomplish a
 useful function if you need it, but because you can't necessarily guess
@@ -44,11 +45,11 @@ when you're going to need it, when you're writing in a language like Java,
 and to a slightly lesser extent $$C++$$, you have to set up the getter/setter
 methods for all data members that are to look public up front, in anticipation
 that you might need the accessors later - since the interface has a
-binary (ABI) nature, you can't change from a public instance variable
-to a private one with a getter/setter or you will break programs depending 
-on the older class signature.
+binary nature (an ABI), you can't change from a public instance variable
+to a private one using a getter/setter or you will break programs which
+depend on the older class signature.
 This bloats the code in anticipation of something that might not
-actually needed, and no new value has been introduced by all those
+actually be needed, and no new value has been introduced by all those
 extra lines.  Ah, but no problem, right?  My IDE just auto-built 
 those for me...
 
@@ -57,7 +58,7 @@ includes that person's age, but we can't perform natural operations on
 that age - if `person` is an instance, we can't access `person.age` or
 set it, we have to use `person.getAge()` and `person.setAge()`.
 
-The C# language improves on this by providing properties.
+The C# language has a try at this problem by providing properties.
 C# defines properties thus:
 
 ____
@@ -94,26 +95,34 @@ instead of
 [source,c#]
 person.setAge(person.getAge() + 1)
 
+It should be noted that properties have their critics, but they are
+convenient for making lighter looking code (of course, they
+could be hiding a lot of complexity).
+
 == Properties in Python
 
 Python has properties too, but there is another benefit in
-Python: as a dynamic language, it does not have the limitation of
-static languages, you can change the implementation,
-without causing problems to clients because you're not dealing
+Python: as a dynamic language, you can change the implementation,
+without causing problems to clients that would be inherent if
+you are dealing
 with a compiled interface.  This means you can define an instance
 variable first, then evolve it to a property later if needed,
-and it will not break clients.
+and it will not break clients. In fact, you should take this
+approach: keep it as simple as possible up front, and then if
+a need is actually demonstrated, you can evolve.
 
 Here is a series of examples showing how properties work in Python.
 
 Consider a Vector class that should be able to provide both an angle in
-radians and an angle in degrees.  This provides an excuse to
+radians and an angle in degrees.  Related data provides an excuse to
 use a getter method - we don't actually need to store both angles
 in the instance, and indeed we don't really want to, because they're
 related, and if someone updates one angle, we have a problem
-because the other one needs to change in sync with it.  It's
-nicer to store one, and generate the other one on demand - that
-solves the sync problem.
+because the other one needs to change in sync with it.  Be honest:
+how many times have you seen code broken because something is changed
+and something that depends on it did not also get updated.
+It's nicer to store one value, and generate the other one on demand -
+solving the sync problem.
 
 === Using the `property` function
 
@@ -188,14 +197,14 @@ Rad: 1.5707963267948966, Deg: 90.0
   <built-in method setter of property object at 0x7fab7d3d9818>
 ----
 
-=== Using the property decorators
+=== Using property decorators
 
-Python provides decorators that have the same effect as
-the the call to the `property` function. `@property` is used
-for the getter, `@x.setter` for the setter and
+Python provides decorators that provide the behavior of the
+the call to the `property` function but with a different syntax.
+`@property` is used for the getter, `@x.setter` for the setter and
 `@x.deleter` for the deleter method which would be
 the third argument to the `property` function if included 
-(replace `x` with the method name).
+(replace `x` with the method name for the latter ones).
 
 [source,python]
 ----
@@ -258,12 +267,15 @@ method is for rather than going hunting to see they're
 later part of a `property` call. Notice that the method names have to
 be the same for all the parts of the property; for the setter and 
 deleter the decorator also takes the name of the method.
+This looks suspiciously like "method overloading" but under
+the covers is not, the `@property` decorators are syntax
+tricks.
 
 === Code Simplification
 
-I don't particularly like this code, though. We are using a sort of
+I don't particularly like this code, though. It uses a sort of
 hidden instance variable as the backing field which holds the value,
-and we've served up getter/setter pairs for both public variables.
+and provided served up getter/setter pairs for both public variables.
 Except there is really no hidden data in Python - starting a name with
 an underscore is a visual hint that we don't intend something to be
 public, but that is all it is, a hint (a leading single underscore only
