@@ -1,13 +1,12 @@
-
 class A(object):
     def __init__(self):
-        self.aa = 'instance of class A'
+        self.dataA = 'instance of class A'
 
 class B(A):
     def __init__(self):
-        A.__init__()
-        self.bb = 'instance of class B'
+        A.__init__(self)
+        self.dataB = 'instance of class B'
 
 b = B()
-print(b.aa)
+print("b.dataA:", b.dataA)
 
