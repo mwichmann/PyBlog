@@ -1,8 +1,8 @@
 = Python Classes: inherit, override, extend
 
-Here is a question that comes up from time to time
-with beginners:  ``I defined a derived class but it is
-not getting data from the base class.  What\'s going on?''
+Here is a question that comes up from time to time when people start
+writing classes in Python:  ``I defined a derived class but it is not
+getting the data from the base class.  What's going on?''
 
 Here is a bit of example code that shows this problem:
 
@@ -11,7 +11,7 @@ Here is a bit of example code that shows this problem:
 include::inherit.py[]
 ----
 
-But this fails:
+But this apparently trivial code fails:
 
 [listing]
 Traceback (most recent call last):
@@ -19,26 +19,30 @@ Traceback (most recent call last):
     print("b.adata:", b.adata)
 AttributeError: 'B' object has no attribute 'adata'
 
-
-Wait, what?  I thought the derived class inherited from
-the base class, yet the variable `adata` set in the base
-class does not exist?
+Wait, what?  I thought the derived class inherited from the base class,
+yet the variable `adata` set in the base class does not exist?  The short
+answer is that is how classes work in Python.  But the details end up
+needing a bit of explanation.
 
 == Viewing Class Inheritance Details
 
-The short answer is that is how classes work in Python. But
-that ends up needing quite a bit of explanation.
+Before getting to the explanation, it is worth pointing out that you do
+not have to take an expert's word for these things, it is pretty easy
+to just stick some diagnostic output into your script to examine what is
+happening. In this post I am going to be lazy and just use `print()`,
+but it is worth noting it is usually better to use Python's logging
+module which gives you far more control of the output and where it
+goes. But logging is its own topic.
 
-Before getting to that, I want to detour to point out how easy
-it is to insert print calls to figure out what Python is
-doing. Following is an expanded example that adds prints in
-a lot of places to help us see what is happening. [Aside:
-using print is lazy, use the logging module!]
+So here we will insert some diagnostics into the simple
+program:
 
 [source,python]
 ----
 include::override.py[]
 ----
+
+When running this, we see:
 
 ----
 Setting class variables in A	<1>
@@ -76,26 +80,30 @@ instances are created, as per the previous note.
 <6> The class data from the base class and the method from
 the base class are inherited as expected.
 
-So we have a good idea what happened.  Instantiating the
-derived class never called the +$$__init__$$+ method in the base class.
-That is because inheritance is very straightforward in Python: if
-the base class defines something and the derived class does not,
-the reference resolves to the one in the base class. But here
-we have defined an +$$__init__$$+, so the reference resolves to it.
-There is no "magic" in the sense that some methods are 
-invoked anyway, even if overridden.
-Python has a term for the way things are looked up, 
-the 'Method Resolution Order' (MRO).
-The MRO documentation is quite detailed because it deals also with complex
-multiple inheritance questions (note many OO languages just avoid this
-by not allowing multiple inheritance), but the situation here is quite
-simple: we just walk up the tree, and if a method is not found in any of
-the explicit defintions, it will pick the method from the `object` class,
-which is the base of all so-called New-Style Classes. 
-This "walk up" concept is very important and we'll come back to it.
+So now we have a good idea what happened.  Instantiating the derived class
+never called the +$$__init__$$+ method in the base class.  That is
+because inheritance is child-oriented in Python.  If the base class
+defines something and the derived class does not, the reference resolves
+to the one in the base class. But here we have defined an +$$__init__$$+
+in the derived/child class, so the reference resolves to that. Think of
+a given class instance as a dictionary, where there's one (and only one)
+mapping of each name in `self` to the object that will correspond to
+that name.
 
-So as a first step, we can "fix" our initial problem by
-calling in to the base class initializer:
+Python has a term for the way things are looked up, the 'Method Resolution
+Order' (MRO).  The MRO documentation is quite detailed because it deals
+also with complex multiple inheritance questions (something many OO
+languages just avoid by not allowing multiple inheritance at all), but
+the situation here is pretty simple: just walk up the tree, until you
+find a match; if a method is not found in any of the explicit defintions,
+it will pick the method from the `object` class, which is the base of
+all so-called New-Style Classes and so is there implicitly even if not
+listed. This "walk up" concept is very important and we'll come back
+to it.
+
+So after a lot of words, we can see how to "fix" our initial
+problem: make a call to the base class initializer if we think
+we need that initialization to happen:
 
 [source,python]
 ----
@@ -112,33 +120,36 @@ b = B()
 print(b.dataA)
 ----
 
-And now the output is as expected:
+After this simple addition, the output is as we might originally
+have expected, instead of the previous error:
 
 [listing]
 instance of class A
 
-There is a little subtlety here: because we are calling
-class `A` by name, rather than through an instance, the
-the +$$__init__$$+ method of `A` does not get automatically supplied with
-an instance reference and you would get an error (specifically,
-`TypeError: __init__() missing 1 required positional argument: 'self'`).
-So we need to supply the instance reference explicitly.
+The order matters, it might be worth trying the experiment again
+with the initializer call and the assignment to `self.dataB`
+swapped to see this.  It means we can perform steps both before
+and after the call to the parent's method, if we need to.
 
-This behavior is not limited to the +$$__init__$$+ function,
-any method of the base class can be called, which means
-the derived class has the flexibility to tailor the behavior
-it wants: inherit from the base clase without doing
-anything, override the base class, or "extend" the base class by
-doing some local work before or after calling the base
-class method.
-You can even extend methods from builtin classes - the
-facility is by no means limited to your own classes.
+There is a subtlety here: because we are calling class `A` by name,
+rather than through an instance, the the +$$__init__$$+ method of `A`
+does not get automatically supplied with an instance reference and you
+would get an error if you did not supply it (specifically,
+`TypeError: __init__() missing 1 required positional argument: 'self'`).
+
+This behavior is not limited to the +$$__init__$$+ function, any method
+of the base class can be called, which means the derived class has the
+flexibility to tailor the behavior it wants: inherit from the base
+clase without doing anything, override the base class, or "extend"
+the base class by doing some local work before or after calling the
+base class method.  You can even extend methods from builtin classes -
+the facility is by no means limited to your own classes.
 
 [sidebar]
 .The Method Resolution Order
 --
-If you are interested in the MRO, it can actually just
-be printed out. For the code above, add this line:
+If you are interested in the MRO, it can actually just be printed out. For
+the code above, add this line:
 
 [source,python]
 ----
@@ -151,7 +162,8 @@ Which would give this response:
 (<class '__main__.B'>, <class '__main__.A'>, <type 'object'>)
 --
 
-As noted earlier, this was a simple case with no surprises.
+As noted earlier, this was a simple case with no surprises, so the
+order is simple.
 
 [sidebar]
 .Introspection
@@ -162,102 +174,98 @@ we can print out the +$$__dict__$$+ attribute of the instance.
 [source,python]
 print("Dict:", b.__dict__)
 
-Before adding the the call to the base class initializer:
+Before adding the the call to the base class initializer the
+dictionary would look like:
 
 [listing]
 Dict: {'dataB': 'instance of class B'}
 
-After:
+Afterwards:
 
 [listing]
 Dict: {'dataA': 'instance of class A', 'dataB': 'instance of class B'}
 
-So calling the base's +$$__init__$$+ method has added
-an entry to the data dictionary of the child instance.
-You can see all the defined symbols in the scope of
+This actually shows more clearly than the previous words the difference
+between having called up to the base class initialization method and not:
+in the second case, base's +$$__init__$$+ method has added an entry to
+the data dictionary of the child instance.  
+
+You can see all the defined symbols (methods and data) in the scope of
 the instance object by adding this:
 
 [source,python]
 print("dir:", dir(b))
 --
 
-== The super Method
+== The `super` Method
 
-All of the above is pretty standard stuff about how Python
-classes work. There can always be surprises when you come from
-a familiar language to a new one and things look kind of
-similar but something is subtly different,
-but that is just part of learning.
+All of the above is pretty standard stuff about how Python classes
+work. There can always be surprises when you come from a familiar
+language to a new one and things look kind of similar but something is
+subtly different, but that is just part of learning.
 
-Calling to a base class by name, however, may or may not
-be a good idea.  It is very clear what you mean, but it
-is not very flexible.  You hardcode a name; if you later
-change the definition of the derived class to inherit
-from some other class, you have to update any calls to
-the previous base class to update the name. And if you
-start playing with multiple inheritance 
-then you have to do some work to figure out
-where to actually call to - see the MRO sidebar. This is
-a potential code maintainability issue.
+Calling to a base class by name, however, may or may not be a good
+idea.  It is very clear what you mean, but it is not very flexible.
+You hardcode a name; if you later change the definition of the derived
+class to inherit from some other class, you have to update any calls
+to the previous base class to update the name.  In fact, for Python 3,
+a class which does not state a base class still has one: `object`;
+it is not terribly clear to a reader if you call a method by name in
+a base class but the base class does not visibly define it.  Once you
+start playing with multiple inheritance then you have to do some work
+to figure out where the call is going - see the MRO sidebar. This is a
+potential code maintainability issue.
 
-There is a tool to make that happen cleanly, the built
-in `super` function. In Python3 `super` is easy to use
-in simple cases.  For our modified short example, replace
-the explicit call to `A`\'s initializer with this:
+There is a tool to make that happen cleanly, the built in `super`
+function. In Python 3 `super` is easy to use in simple cases.  For our
+modified short example, replace the explicit call to the initializer
+for class A with this:
 
 [source,python]
-----
 super().__init__()
-----
 
-`super` uses data from the context of the call
-to figure out where to delegate it to: the class where the call
-appears,  and the ancestry tree of the instance.
-So we do not need to supply the `self`
-argument in this case, unlike the hardwired call to a class's init method.
+`super` uses data from the context of the call to figure out where to
+delegate it to: the class where the call appears,  and the ancestry
+tree of the instance.  So we do not need to supply the `self` argument
+in this case, unlike the hardwired call to a class's init method.
 
-`super` in Python2 is a little dfferent, look it up if you
-need to use it there.
+`super` in Python2 is a little dfferent, look it up if you need to use
+it there.
 
-The "walk up from the bottom" nature of `super` means
-you have to give some thought when designing your classes.
-From the viewpoint of a given method, calling `super` does
-not mean call my immediate parent's method, it means
-walk up from `self` until you find it.  Remembering that
-`self` written in a method does not mean "me", it means
-the instance object I was called with, which could very well
-be an instance of a class that derived from me. So be nice
-to others who may want to derive from you.
+The "walk up from the bottom" nature of `super` means you have to give
+some thought when designing your classes.  From the viewpoint of a given
+method, calling `super` does not mean call my immediate parent's method,
+it means walk up from `self` until you find it.  Remembering that `self`
+written in a method does not mean "me", it means the instance object I
+was called with, which could very well be an instance of a class that
+derived from me. So be nice to others who may want to derive from you,
+don't build in assumptions that may not work for derived classes.
 
-Somewhat surprisingly, `super` is a bit controversial
-in the Python community, there have been blog posts and
-flame wars on whether it is a good thing or bad thing.
-Most of that centers around complex inheritance trees,
-especially multiple inheritance.  I see no reason not
-to use it as described in this post.  If things get more
-complicated, you do need to make sure the arguments line
-up between caller and callee, and because `super` doesn't
-tell you what the callee is, that is work you have to take
-care of manually.
+Somewhat surprisingly, `super` is a bit controversial in the Python
+community, there have been blog posts and flame wars on whether it is a
+good thing or bad thing.  Most of that centers around complex inheritance
+trees, especially multiple inheritance.  I see no reason not to use it as
+described in this post.  If things get more complicated, you do need to
+make sure the arguments line up between caller and callee, and because
+`super` doesn't tell you what the callee is, that is work you have to
+take care of manually.
 
 == Summing Up
-If you've read this far, it may have occurred that Python classes
-are very flexible.  This may be unlike the rather rigid
-contstraints of more classical object-oriented languages.
-Here is a concept to think about:
-____
-Classes in Python do not so much inherit as delegate. You
-derive from another class in order to reuse its code,
-which in practice means your dictionary of methods and data
-is pre-populated with references from the class you are "deriving"
-from. But you are completely in charge of this relationship.
-If you define a name in your class, that goes in the dictionary
-in preference to the same name from the base class. If you
-do not, think of that as asking the base class to do
-that particular bit of work for you since the code is already
-implemented. And if you do define a name, you can still ask
-the base class to do some of the work for you by calling
-into it explicitly, so you are not so much extending a method
-as augmenting the one you have provided with code that
-already exists elsewhere.
+If you've read this far, it may have occurred that Python classes are
+very flexible.  This may be unlike the rather rigid contstraints of more
+classical object-oriented languages.  Here is a concept to think about:
+
+____ 
+Classes in Python do not so much inherit, override, extend as they
+delegate and reuse. You derive from another class in order to reuse
+its code, which in practice means your dictionary of methods and data
+is pre-populated with references from the class(es) you are "deriving"
+from. But you are completely in charge of this relationship. If you
+define a name that is also defined above you in your inheritance tree,
+your definition is the one that goes in the dictionary, and you are
+stating you want to do that work yourself, not delegate it.  You can
+choose, in your implementation, to call out to another implementation
+for the same name from a base class - and that is not so much extending
+as augmenting your version with code found elsewhere.  And if you do not
+define it, you are reusing the code for that name as defined elsewhere.
 ____
