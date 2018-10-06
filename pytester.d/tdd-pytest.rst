@@ -10,7 +10,7 @@ on that did something some might consider "obscure", and how to be sure
 it worked correctly.  You can of course put in print statements to trace
 what is going on, then remove them later, but this also sounds like
 a case for writing a test that confirms the behavior, then coding up
-the function, mkaing adjustments until the test passes.  This roughly,
+the function, making adjustments until the test passes.  This roughly,
 is what is called test-driven development (TDD).
 
 When we chatted about how to do that, the person said they had trouble
@@ -34,7 +34,7 @@ but that has no meaning anyway since a dictionary has no order).  To show
 it's working there is also code to try it out if it is called as a program
 (as opposed to a module). This is the way people used to write tests for
 a Python module, before test harnesses became widely used: just code up
-a few checks and stuff them in the "main" part. ::
+a few checks and stuff them into the "main" part::
 
     def slicerev(collection):
         return collection[::-1]
@@ -51,14 +51,15 @@ get reversed as we expected::
     (4, 3, 2, 1)
     dcba
 
+
 Using PyTest
 ============
 
 Let's take this basic test code and turn it into a separate test using
 PyTest.  Unit tests for a particular function are often named (this is
-convention) test_{funcname}.py. If it's named this way pytest can find
+convention) test\_{funcname}.py. If it's named this way lets pytest discover
 it automatically - runing py.test without arguments lets it hunt for
-files that begin with 'test'.  It's not mandatory to use this naming,
+files that begin with 'test\_' or end with '_test'.  It's not mandatory to use this naming,
 you can give the name of the test file as an argument, or use other
 methods to describe exactly where the tests should be picked up from.
 
@@ -148,11 +149,11 @@ of the decorator we need to turn something into a PyTest fixture, so
 the import is needed.
 
 Since what we're factoring here is supplying different sets of data, the
-fixture function 'slicedata' itself is extremely simple: all it does is
+fixture function `slicedata` itself is extremely simple: all it does is
 return the data.  The test function has the same two functional statements
 that each of the test functions had before - call the function under test,
 then use an assertion to check the result was as expected.  In addition
-to that, the takes the fixture function as an argument, which would not
+to that, the test takes the fixture function as an argument, which would not
 make much sense by itself, but once it is turned into a fixture it does.
 
 We use a decorator to turn 'slicedata' into a fixture - remember Python
